@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>3D 공연장 v0.7 — 다목적실 (중앙 원형 무대)</title>
+<title>3D 공연장 v0.8 — 다목적실 (중앙 원형 무대)</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#060505;color:#eee;
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -69,7 +69,7 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.7 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.8 — 중앙 원형 무대</h2>
   <table>
     <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
@@ -127,7 +127,7 @@ const SHOW = {
   ellipse: { a: 4.5, b: 2.6 },      // 찬양팀이 서는 타원: 긴 방향 9.0m × 폭 5.2m (둘레는 지름 7.2m 원과 같음)
   underlay: [9.8, 6.0],             // 러그 아래 어두운 바닥 천(m)
   slots: { drums: 3.0, keys: 2.2, inst: 1.6 },   // 자리 폭(m), 나머지는 보컬 7명이 균등 분할
-  audience: { a0: 6.3, b0: 4.1, depth: 4.0, rowGap: 0.8, pitch: 0.68, aisle: 1.5 },   // 회중 첫 줄 타원(반축)과 줄 깊이
+  audience: { count: 195, a0: 6.3, b0: 4.1, depth: 16, rowGap: 1.1, pitch: 0.95, aisle: 1.5 },   // 1인당 약 1㎡(서서 예배하는 여유 간격), 가까운 줄부터 195명   // 회중 첫 줄 타원(반축)과 줄 깊이
   standDist: 5.35, standWallGap: 1.3, standHeight: 7.0, standAxis: 'NS',   // NS = 좌·우 측벽 앞
 };
 const L = VENUE.length, Wd = VENUE.width, HW = Wd / 2, C = SHOW.center;
@@ -728,17 +728,19 @@ const crowd = new THREE.Group(); dyn.add(crowd);
 const crowdSets = [];
 {
   const A = SHOW.audience, spots = [], d = SHOW.standDist, d2 = HW - SHOW.standWallGap, reserved = [[C.X - d, C.Y], [C.X + d, C.Y], [C.X, C.Y - d2], [C.X, C.Y + d2]];
-  for (let gap = 0; gap <= A.depth; gap += A.rowGap) {
+  for (let gap = 0; gap <= A.depth && spots.length < A.count; gap += A.rowGap) {
     const ra = A.a0 + gap, rb = A.b0 + gap, n = Math.floor(2 * Math.PI * Math.sqrt((ra * ra + rb * rb) / 2) / A.pitch), off = rnd();
-    for (let k = 0; k < n; k++) {
+    for (let k = 0; k < n && spots.length < A.count; k++) {
       const a = (k + off) / n * Math.PI * 2, dx = ra * Math.cos(a), dy = rb * Math.sin(a), X = C.X + dx, Y = C.Y + dy;
       if (Math.abs(dx) < A.aisle / 2 || Math.abs(dy) < A.aisle / 2) continue;
-      if (X < S.depth + 1.3 || X > L - 0.8 || Y < 0.9 || Y > Wd - 0.9) continue;
+      if (X < 0.8 || X > L - 0.8 || Y < 0.9 || Y > Wd - 0.9) continue;
+      if (X > S.depth - 0.4 && X < S.depth + 0.9) continue;               // 무대 턱
+      if (X < S.depth && (Y < S.zFrom + 0.4 || Y > S.zTo - 0.4 || Math.hypot(X - 2.2, Y - HW) < 1.0)) continue;
       if (X > X_.x0 - 0.7 && Y < X_.y1 + 0.7) continue;
       if (Math.hypot(X - VIEW_AUD[0], Y - VIEW_AUD[1]) < 0.6 || Math.hypot(X - 28.8, Y - 10.5) < 3.2) continue;
       if (reserved.some(([sx, sy]) => Math.hypot(X - sx, Y - sy) < 1.25)) continue;
       if (rnd() < 0.1) continue;
-      spots.push({ x: X + (rnd() - 0.5) * 0.16, z: -(Y + (rnd() - 0.5) * 0.16), s: 0.89 + rnd() * 0.13, w: 0.9 + rnd() * 0.2, rot: 0, ph: rnd() * 6.3, v: (rnd() < 0.15 ? 2 : 0) + (rnd() < 0.45 ? 1 : 0) });
+      spots.push({ h: X < S.depth ? S.h : 0, x: X + (rnd() - 0.5) * 0.16, z: -(Y + (rnd() - 0.5) * 0.16), s: 0.89 + rnd() * 0.13, w: 0.9 + rnd() * 0.2, rot: 0, ph: rnd() * 6.3, v: (rnd() < 0.15 ? 2 : 0) + (rnd() < 0.45 ? 1 : 0) });
     }
   }
   const tops = [0x1a1a1d, 0x25293a, 0xc4bfb3, 0x7a6f5c, 0x434a3e, 0x5f5f63, 0xa39478, 0x352a26, 0x1f2b40, 0xd2cfc8, 0x4f322d, 0x848c95, 0x111113, 0x2c2c30];
@@ -756,14 +758,14 @@ const crowdSets = [];
     });
     crowdSets.push({ list, meshes: Object.values(meshes) });
   }
-  window.__crowd = spots.length;
+  window.__crowd = spots.length; window.__onStage = spots.filter(s => s.h > 0).length; window.__maxGap = Math.max(...spots.map(s => Math.hypot(s.x - C.X, s.z + C.Y)));
 }
 const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e4 = new THREE.Euler(0, 0, 0, 'YXZ'), v4 = new THREE.Vector3(), s4 = new THREE.Vector3();
 function updateCrowd(t) {
   for (const { list, meshes } of crowdSets) {
     list.forEach((s, i) => {
       e4.set(Math.sin(t * 0.9 + s.ph) * 0.02, s.rot, Math.sin(t * 1.25 + s.ph * 2) * 0.03);
-      m4.compose(v4.set(s.x, 0, s.z), q4.setFromEuler(e4), s4.set(s.w * s.s, s.s, s.w * s.s));
+      m4.compose(v4.set(s.x, s.h, s.z), q4.setFromEuler(e4), s4.set(s.w * s.s, s.s, s.w * s.s));
       for (const m of meshes) m.setMatrixAt(i, m4);
     });
     for (const m of meshes) m.instanceMatrix.needsUpdate = true;
