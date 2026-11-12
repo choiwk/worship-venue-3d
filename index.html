@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>3D 공연장 v0.3 — 다목적실 (중앙 원형 무대)</title>
+<title>3D 공연장 v0.4 — 다목적실 (중앙 원형 무대)</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#060505;color:#eee;
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -69,7 +69,7 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.3 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.4 — 중앙 원형 무대</h2>
   <table>
     <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
@@ -79,13 +79,13 @@
   <b>공연 구성</b>
   <table>
     <tr><td>편성 (12명)</td><td>보컬 7 · 일렉 1 · 베이스 1 · 드럼 1 · 건반 2</td></tr>
-    <tr><td>공연자 원</td><td>반지름 3.2m, 모두 중앙을 바라봄</td></tr>
-    <tr><td>카펫</td><td>지름 9.4m 원형</td></tr>
+    <tr><td>카펫</td><td>페르시아 러그 4장(240×160cm)을 2×2로, 4.8 × 3.2m</td></tr>
+    <tr><td>찬양팀 배치</td><td>러그 가장자리를 따라 둘러서서 중앙을 바라봄</td></tr>
     <tr><td>스탠드 조명</td><td>좌·우 측벽 앞 2대, 각 4구 LED × 2단, 중앙 조준</td></tr>
-    <tr><td>관객</td><td>반지름 6m부터 원형, 십자 통로 4개</td></tr>
+    <tr><td>회중</td><td>반지름 약 5m부터 원형, 십자 통로 4개</td></tr>
   </table>
   <b>질감 출처</b> — 모두 CC0(자유 이용) 사진 텍스처를 현장 색에 맞춰 보정<br>
-  바닥: ambientCG WoodFloor051 · 벽/기둥: Poly Haven oak_veneer_01 · 하부 목재: Poly Haven plywood · 카펫: ambientCG Carpet012<br><br>
+  바닥: ambientCG WoodFloor051 · 벽/기둥: Poly Haven oak_veneer_01 · 하부 목재: Poly Haven plywood · 러그 무늬: 직접 그린 페르시아풍 패턴<br><br>
   <span class="g gA">A</span> 도면 표기값 · <span class="g gB">B</span> 사진으로 확인 · <span class="g gC">C</span> 추정값
   <div style="margin-top:10px;text-align:right"><button data-close>닫기</button></div>
 </div>
@@ -122,16 +122,31 @@ const VENUE = {
 /* SHOW — 이번 공연 구성 */
 const SHOW = {
   center: { X: 17.4, Y: 9.0 },
-  ringR: 3.2, carpetR: 4.7,
-  vocals: [-78, -50.3, -22.7, 5, 32.7, 60.3, 88],     // 각도(°), 0° = 동쪽
-  guitar: 115, bass: 143, drums: 180, keys: [218, 252],
-  audience: { r0: 6.0, r1: 8.6, rowGap: 0.8, pitch: 0.68, aisle: 1.5 },
+  rug: { w: 2.4, d: 1.6 },          // 페르시아 러그 한 장(m). 2×2로 붙여 4.8 × 3.2m
+  ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
+  ellipse: { a: 2.6, b: 1.9 },      // 찬양팀이 서는 타원(러그 가장자리)
+  slots: { drums: 2.2, keys: 1.6, inst: 1.1 },   // 자리 폭(m), 나머지는 보컬 7명이 균등 분할
+  audience: { r0: 4.9, r1: 8.3, rowGap: 0.8, pitch: 0.68, aisle: 1.5 },
   standDist: 5.35, standWallGap: 1.3, standHeight: 7.0, standAxis: 'NS',   // NS = 좌·우 측벽 앞
 };
 const L = VENUE.length, Wd = VENUE.width, HW = Wd / 2, C = SHOW.center;
 const P = (X, Y, h = 0) => new THREE.Vector3(X, h, -Y);
 const roofAt = Y => VENUE.eave + (VENUE.ridge - VENUE.eave) * (1 - Math.abs(Y - HW) / HW);
-const polar = (deg, r) => { const a = deg * Math.PI / 180; return [C.X + r * Math.cos(a), C.Y + r * Math.sin(a)]; };
+// 기준 원(ringR) 위의 (각도, 반지름)을 러그에 맞춘 타원 위 좌표로 변환
+const polar = (deg, r) => { const a = deg * Math.PI / 180, k = r / SHOW.ringR; return [C.X + k * SHOW.ellipse.a * Math.cos(a), C.Y + k * SHOW.ellipse.b * Math.sin(a)]; };
+{ // 타원 둘레를 자리 폭대로 나눠 각 파트의 각도를 계산 (드럼은 서쪽 끝, 그 옆으로 건반 2 / 베이스·일렉, 맞은편에 보컬 7)
+  const { a, b } = SHOW.ellipse, N = 720, cum = [0];
+  const pt = t => [a * Math.cos(t), b * Math.sin(t)];
+  for (let i = 1; i <= N; i++) { const p = pt(Math.PI + (i - 1) / N * 2 * Math.PI), q = pt(Math.PI + i / N * 2 * Math.PI); cum.push(cum[i - 1] + Math.hypot(q[0] - p[0], q[1] - p[1])); }
+  const per = cum[N], degAt = sIn => { const sm = ((sIn % per) + per) % per; let i = cum.findIndex(c => c >= sm); let d = 180 + i / N * 360; if (d > 180) d -= 360; return d; };
+  const sl = SHOW.slots, fixed = sl.drums + 2 * sl.keys + 2 * sl.inst, vw = (per - fixed) / 7;
+  let s0 = sl.drums / 2;
+  SHOW.drums = 180;
+  SHOW.keys = [degAt(s0 + sl.keys / 2), degAt(s0 + sl.keys * 1.5)]; s0 += 2 * sl.keys;
+  SHOW.vocals = Array.from({ length: 7 }, (_, i) => degAt(s0 + vw * (i + 0.5))); s0 += 7 * vw;
+  SHOW.guitar = degAt(s0 + sl.inst / 2); SHOW.bass = degAt(s0 + sl.inst * 1.5);
+  SHOW.keys = SHOW.keys.map(d => d < 0 ? d + 360 : d);
+}
 let seed = 20261112;
 const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 
@@ -561,9 +576,33 @@ const faceCenter = (o, away = false) => { const t = P(C.X, C.Y); o.rotation.y = 
 const place = (o, deg, r, h = CY) => { const [X, Y] = polar(deg, r); o.position.copy(P(X, Y, h)); return o; };
 const shadowAll = g => g.traverse(m => { if (m.isMesh) m.castShadow = true; });
 const blockers = [];
-{
-  const carpet = new THREE.Mesh(new THREE.CylinderGeometry(SHOW.carpetR, SHOW.carpetR, CY, 80), M.carpet);
-  carpet.position.copy(P(C.X, C.Y, CY / 2)); carpet.receiveShadow = true; dyn.add(carpet);
+{ // 페르시아 무늬 러그 4장 (240 × 160cm)을 2×2로 붙여 4.8 × 3.2m
+  const tRug = mkTex(1024, 683, (g, w, h) => {
+    const cream = '#e6dcc6', beige = '#cdb994', blue = '#4f6f96', navy = '#2c3f5c', brown = '#7a5a40';
+    g.fillStyle = '#d8cdb4'; g.fillRect(0, 0, w, h);
+    const band = (m, col, lw) => { g.strokeStyle = col; g.lineWidth = lw; g.strokeRect(m, m, w - 2 * m, h - 2 * m); };
+    g.fillStyle = cream; g.fillRect(14, 14, w - 28, h - 28);
+    g.fillStyle = beige; g.fillRect(30, 30, w - 60, h - 60);
+    g.fillStyle = cream; g.fillRect(104, 104, w - 208, h - 208);
+    band(30, brown, 2); band(104, brown, 2); band(22, navy, 1.5); band(112, blue, 1.5);
+    const flower = (x, y, r, c1, c2) => { for (let k = 0; k < 8; k++) { const an = k * Math.PI / 4; g.fillStyle = k % 2 ? c1 : c2; g.beginPath(); g.ellipse(x + Math.cos(an) * r * 0.55, y + Math.sin(an) * r * 0.55, r * 0.45, r * 0.22, an, 0, 6.3); g.fill(); } g.fillStyle = navy; g.beginPath(); g.arc(x, y, r * 0.2, 0, 6.3); g.fill(); };
+    const scroll = (x, y, r, dir) => { g.strokeStyle = blue; g.lineWidth = 2.2; g.beginPath(); for (let t = 0; t < 5.2; t += 0.2) g.lineTo(x + Math.cos(t * dir) * r * (1 - t / 6), y + Math.sin(t * dir) * r * (1 - t / 6)); g.stroke(); };
+    for (let x = 67 + 37; x < w - 80; x += 74) { for (const y of [67, h - 67]) { flower(x, y, 15, blue, brown); scroll(x + 37, y, 13, 1); } }
+    for (let y = 67 + 37; y < h - 80; y += 74) { for (const x of [67, w - 67]) { flower(x, y, 15, blue, brown); scroll(x, y + 37, 13, -1); } }
+    for (let i = 0; i < 70; i++) { const x = 140 + Math.random() * (w - 280), y = 140 + Math.random() * (h - 280); if (Math.hypot((x - w / 2) / 1.3, y - h / 2) < 150) continue; flower(x, y, 6 + Math.random() * 8, Math.random() < 0.5 ? blue : '#8fa3b8', Math.random() < 0.5 ? brown : beige); if (i % 3 === 0) scroll(x + 16, y + 10, 10, i % 2 ? 1 : -1); }
+    for (let ring = 0; ring < 5; ring++) { const rr = 135 - ring * 26, n = 16 - ring * 2; for (let k = 0; k < n; k++) { const an = k / n * 6.283 + ring * 0.2; flower(w / 2 + Math.cos(an) * rr * 1.25, h / 2 + Math.sin(an) * rr, 16 - ring * 1.5, ring % 2 ? blue : navy, ring % 2 ? beige : brown); } }
+    g.strokeStyle = brown; g.lineWidth = 2; g.beginPath(); g.ellipse(w / 2, h / 2, 190, 152, 0, 0, 6.3); g.stroke();
+    g.globalAlpha = 0.10; for (let y = 0; y < h; y += 3) { g.fillStyle = y % 6 ? '#000' : '#fff'; g.fillRect(0, y, w, 1); } g.globalAlpha = 1;
+    speckle(g, w, h, 30000, 60, 230, 0.10);
+  });
+  tRug.wrapS = tRug.wrapT = THREE.ClampToEdgeWrapping;
+  const side = std({ color: 0xcfc3a8, roughness: 1 }), top = std({ map: tRug, roughness: 0.95 });
+  top.normalMap = null; photo(top, 'normalMap', 'carpet_n.jpg', 3, 2); top.normalScale.set(0.5, 0.5);
+  const { w, d } = SHOW.rug;
+  [[-1, -1, 0.004], [1, -1, -0.006], [-1, 1, -0.005], [1, 1, 0.007]].forEach(([sx, sy, rot]) => {
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), [side, side, top, side, side, side]);
+    rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d / 2 + 0.004), CY / 2)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
+  });
 }
 function makeGuitar(bass, color) {
   const g = new THREE.Group(), body = std({ color, roughness: 0.25 }), neckM = std({ color: 0xb8935c, roughness: 0.5 }), fret = std({ color: 0x2a1c12, roughness: 0.6 });
@@ -628,7 +667,7 @@ function cable(pts, r = 0.007) {
 }
 const performers = [];
 {
-  const R = SHOW.ringR, SB = polar(166, 1.5);
+  const R = SHOW.ringR, SB = polar(166, 1.3);
   const looks = [
     { top: 0xcfc8b8, bottom: 0x202026, arms: [[2.5, 0.25, 0.35], [0.06, 0.07, 0.25]], h: 1.64, longHair: true },
     { top: 0x283047, bottom: 0x7d6f5a, arms: [[0.3, 0.02, 1.9], [0.3, 0.02, 1.9]], h: 1.76 },
@@ -644,41 +683,41 @@ const performers = [];
     cable([polar(deg, R - 0.34), polar(deg + (deg > 0 ? 12 : -12), 2.1), polar(deg > 5 ? 125 : 235, 1.5), SB]);
     blockers.push([...polar(deg, R), 0.38]);
   });
-  for (const [deg, bass, col, ampDeg] of [[SHOW.bass, true, 0x2a2420, 156], [SHOW.guitar, false, 0x7c2420, 102]]) {
+  for (const [deg, bass, col, ampDeg] of [[SHOW.bass, true, 0x2a2420, SHOW.bass + 14], [SHOW.guitar, false, 0x7c2420, SHOW.guitar - 14]]) {
     const p = makePerson({ top: bass ? 0x34343a : 0xa8a193, bottom: 0x1a1a1e, arms: [[0.25, 0.08, 1.45], [0.6, 0.42, 0.55]], h: bass ? 1.77 : 1.73 });
     const gt = makeGuitar(bass, col); gt.position.set(0.03, p.hip + 0.12, 0.17); gt.rotation.z = 0.32; p.g.add(gt);
     place(p.g, deg, R); faceCenter(p.g); dyn.add(p.g); performers.push({ ...p, ph: deg });
-    const amp = bass ? makeAmp(0.6, 0.78, 0.4) : makeAmp(0.6, 0.5, 0.28); place(amp, ampDeg, 4.05); faceCenter(amp); dyn.add(amp);
-    cable([polar(deg, R + 0.1), polar((deg + ampDeg) / 2, R + 0.6), polar(ampDeg, 3.8)]);
-    blockers.push([...polar(deg, R), 0.42], [...polar(ampDeg, 4.05), 0.45]);
+    const amp = bass ? makeAmp(0.6, 0.78, 0.4) : makeAmp(0.6, 0.5, 0.28); place(amp, ampDeg, 4.3); faceCenter(amp); dyn.add(amp);
+    cable([polar(deg, R + 0.1), polar((deg + ampDeg) / 2, R + 0.6), polar(ampDeg, 4.05)]);
+    blockers.push([...polar(deg, R), 0.42], [...polar(ampDeg, 4.3), 0.45]);
   }
   // 드럼
-  const kit = makeDrums(); place(kit, SHOW.drums, R - 0.35); faceCenter(kit); dyn.add(kit);
+  const kit = makeDrums(); place(kit, SHOW.drums, R - 0.75); faceCenter(kit); dyn.add(kit);
   const drummer = makePerson({ top: 0x26262a, bottom: 0x2d2a26, seated: true, arms: [[0.75, 0.3, 1.0], [0.75, 0.3, 1.0]], h: 1.75 });
   drummer.g.position.set(0, 0, -0.8); kit.add(drummer.g); performers.push({ ...drummer, ph: 4, seated: true });
   for (const a of drummer.arms) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.4, 5), std({ color: 0xc9a66b, roughness: 0.6 })); st.position.set(0, -0.3, 0.12); st.rotation.x = 1.2; a.el.add(st); }
-  blockers.push([...polar(SHOW.drums, R), 1.05]);
+  blockers.push([...polar(SHOW.drums, R - 0.2), 1.0]);
   // 건반 2대 (하나는 앉아서, 하나는 서서)
   SHOW.keys.forEach((deg, i) => {
-    const seated = i === 0, kb = makeKeys(seated); place(kb, deg, R - 0.5); faceCenter(kb); dyn.add(kb);
+    const seated = i === 0, kb = makeKeys(seated); place(kb, deg, R - 0.75); faceCenter(kb); dyn.add(kb);
     const pl = makePerson(seated ? { top: 0xd9d3c6, bottom: 0x20242c, seated: true, arms: [[0.5, 0.05, 1.1], [0.5, 0.05, 1.1]], h: 1.7 } : { top: 0x3b4237, bottom: 0x18181b, arms: [[0.15, 0.05, 1.25], [0.15, 0.05, 1.25]], h: 1.68, longHair: true });
     pl.g.position.set(0, 0, seated ? -0.56 : -0.42); kb.add(pl.g); performers.push({ ...pl, ph: 7 + i, seated: true });
     cable([polar(deg, R - 0.55), polar(deg - 14, 2.0), SB]);
     blockers.push([...polar(deg, R - 0.3), 0.85]);
   });
   // 중앙: 모니터 스피커 4대, 스테이지 박스, 멀티 케이블
-  for (const deg of [40, 130, 220, 310]) {
+  for (const deg of [35, 325]) {
     const w = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.4), M.tolex); b.rotation.x = -0.6; b.position.y = 0.2; b.castShadow = true; w.add(b);
     const gr = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.27), M.grille); gr.position.z = 0.201; b.add(gr);
-    place(w, deg, 0.95); faceCenter(w, true); dyn.add(w); cable([polar(deg, 0.8), polar(deg + 35, 1.1), SB], 0.006);
+    place(w, deg, 0.9); faceCenter(w, true); dyn.add(w); cable([polar(deg, 0.8), polar(deg + 35, 1.1), SB], 0.006);
   }
-  blockers.push([C.X, C.Y, 1.3]);
+  blockers.push([C.X + 0.5, C.Y, 0.7]);
   const sb = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.22), M.blackMetal); sb.position.copy(P(SB[0], SB[1], CY + 0.06)); sb.castShadow = true; dyn.add(sb);
   cable([SB, polar(199, 2.5), polar(199, 5.0), [8, 6.6], [5.2, 6.4]], 0.014);
 }
 
 /* ---------- audience ---------- */
-const VIEW_AUD = polar(-36, SHOW.audience.r0);
+const VIEW_AUD = [C.X + SHOW.audience.r0 * Math.cos(-0.63), C.Y + SHOW.audience.r0 * Math.sin(-0.63)];
 const crowd = new THREE.Group(); dyn.add(crowd);
 const crowdSets = [];
 {
@@ -803,9 +842,9 @@ function setView(v) {
   viewBtns.forEach(b => b.classList.toggle('on', b.dataset.view === v));
   mode = v === 'walk' ? 'third' : v === 'orbit' ? 'orbit' : 'first';
   if (v === 'entrance') avatar.position.copy(P(28.8, 10.5));
-  if (v === 'performer') avatar.position.copy(P(...polar(19, SHOW.ringR + 0.15)));
+  if (v === 'performer') avatar.position.copy(P(...polar((SHOW.vocals[5] + SHOW.vocals[6]) / 2, SHOW.ringR + 0.25)));
   if (v === 'audience') avatar.position.copy(P(...VIEW_AUD));
-  if (v === 'walk' && Math.hypot(avatar.position.x - C.X, avatar.position.z + C.Y) < 5.5) avatar.position.copy(P(26.9, 9.0));
+  if (v === 'walk' && Math.hypot(avatar.position.x - C.X, avatar.position.z + C.Y) < 4.6) avatar.position.copy(P(26.9, 9.0));
   if (v !== 'first' && v !== 'orbit') lookAtCenter();
   pitch = mode === 'third' ? 0.25 : v === 'performer' ? 0.1 : 0.03;
   orbit.enabled = mode === 'orbit'; joy.style.display = mode === 'orbit' ? 'none' : '';
@@ -847,7 +886,7 @@ function blocked(x, z) {
 function groundAt(x, z) {
   const Y = -z;
   if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + 0.4) return S.h / 2; }
-  return Math.hypot(x - C.X, Y - C.Y) < SHOW.carpetR ? CY : 0;
+  return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d ? CY : 0;
 }
 const tmp = new THREE.Vector3();
 let walkPh = 0;

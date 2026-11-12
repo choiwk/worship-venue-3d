@@ -5,13 +5,13 @@
 
 사용자: 비개발자에 가까운 공연 기획자(찬양 콘서트 팀 대표). **한국어로, 초보자도 이해하게 설명**. 구조/이유를 먼저 설명하는 걸 선호하고, 수정 시 **부분 코드가 아니라 통째로 교체 가능한 완성 파일**을 선호.
 
-## 현재 상태 (v0.3, 2026-11-12)
+## 현재 상태 (v0.4, 2026-11-12)
 - `index.html` 한 파일에 전부 들어 있음 (Three.js r160, jsdelivr CDN importmap). 빌드 도구 없음.
 - `tex/` 사진 질감 (CC0, 현장 색에 맞춰 보정): floor(ambientCG WoodFloor051 + normal/roughness), panel·perf·slat(Poly Haven oak_veneer_01), wain(Poly Haven plywood), carpet(ambientCG Carpet012 + normal).
   - 질감은 `photo()`로 비동기 로드, 실패해도 기본 색으로 렌더됨.
 - `data/venue_3F_plan.json` 도면에서 뽑은 좌표 데이터(mm, 원점 X1×Y4, +X 동쪽, +Y 북쪽).
 - claude.ai 아티팩트로도 게시돼 있었음(같은 내용).
-- **GitHub 저장소 `choiwk/worship-venue-3d` 생성됨(비어 있음). 아직 push 안 됨.**
+- **GitHub `choiwk/worship-venue-3d` main에 push 완료.** Pages는 사용자가 Settings에서 켜야 함. 아래 push 안내는 과거 기록.
   - 이유: 클라우드 세션의 Claude GitHub 앱 권한이 이 저장소에 없었음. Claude Code(로컬)에서는 사용자 git 자격으로 바로 push 가능.
   - 해야 할 것: `git remote add origin https://github.com/choiwk/worship-venue-3d.git && git push -u origin main` → 저장소 Settings → Pages → Branch `main` / `/(root)` → `https://choiwk.github.io/worship-venue-3d/`
   - `reference/`는 .gitignore에 있음(현장 사진·도면·원본 프롬프트, 공개 저장소에 안 올리려고). 올릴지 사용자에게 확인할 것. `data/venue_3F_plan.json`에는 공사명(주소 포함)이 있어 공개 여부도 사용자 확인 권장.
@@ -27,7 +27,9 @@
 ## 확정된 사실 / 사용자 결정
 - 공연 장소 = 다목적실(X1~X5, 30m × 18m, 그리드 7.5m). 실내 기둥 없음, 맞배지붕(용마루 동서 방향), 기존 고정 무대는 서쪽 끝(이번 공연엔 미사용).
 - 공연은 **홀 중앙**(코트 중앙 X 17.4, Y 9.0)에서 원형으로, 공연자끼리 서로 마주 봄. 관객이 사방으로 둘러쌈.
-- 편성 12명: **보컬 7, 일렉 1, 베이스 1, 드럼 1, 건반 2**. 공연자 원 반지름 3.2m, 카펫 지름 9.4m(사용자가 "더 넓게" 요청해 확대).
+- 편성 12명: **보컬 7, 일렉 1, 베이스 1, 드럼 1, 건반 2**. '밴드' 대신 **'찬양팀'**이라는 말을 쓸 것.
+- 카펫: **페르시아 무늬 러그 4장(각 240×160cm)을 2×2로 붙인 4.8×3.2m**, 그 위에 찬양팀 전원. 코드에서는 `SHOW.ellipse`(2.6×1.9m 타원) 둘레를 `SHOW.slots` 폭으로 나눠 배치하고 `polar()`가 타원 좌표로 변환. 12명에게는 빠듯함(보컬 간격 약 0.9m).
+- 사람 표현: 사용자가 '온라인의 실제 한국인 사진으로 3D 인물'을 요청했으나, 실존 인물(학생 포함) 사진 무단 사용은 하지 않기로 안내함. 대안(라이선스 있는 3D 인물 모델, 팀원 본인 동의 사진 등)은 사용자 선택 대기.
 - 조명: **좌·우 측벽 앞**(남·북)에 **7m 스탠드 조명** 2대(T바 2단 × 4구 LED 파, 참고: reference/stand_light_7m.png)가 중앙을 비춤. 벽면 조명은 **주광색 오렌지(따뜻한 색)**. 현재 기본 temp 0.2(오렌지 쪽).
 - 실사 느낌 원함("애니메이션 느낌 없이").
 
