@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>3D 공연장 v0.6 — 다목적실 (중앙 원형 무대)</title>
+<title>3D 공연장 v0.7 — 다목적실 (중앙 원형 무대)</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#060505;color:#eee;
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -69,7 +69,7 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.6 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.7 — 중앙 원형 무대</h2>
   <table>
     <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
@@ -79,10 +79,10 @@
   <b>공연 구성</b>
   <table>
     <tr><td>편성 (12명)</td><td>보컬 7 · 일렉 1 · 베이스 1 · 드럼 1 · 건반 2</td></tr>
-    <tr><td>카펫</td><td>페르시아 러그 6장(240×160cm)을 2×3으로, 4.8 × 4.8m</td></tr>
-    <tr><td>찬양팀 배치</td><td>지름 약 7.2m 원으로 둘러서서 중앙을 바라봄 (드럼·앰프 포함 약 9.5m)</td></tr>
+    <tr><td>카펫</td><td>페르시아 러그 6장(240×160cm)을 3×2로, 7.2 × 3.2m</td></tr>
+    <tr><td>찬양팀 배치</td><td>긴 방향 9.0m × 폭 5.2m 타원으로 둘러서서 중앙을 바라봄</td></tr>
     <tr><td>스탠드 조명</td><td>좌·우 측벽 앞 2대, 각 4구 LED × 2단, 중앙 조준</td></tr>
-    <tr><td>회중</td><td>반지름 5.9m부터 원형, 십자 통로 4개</td></tr>
+    <tr><td>회중</td><td>찬양팀 타원에서 약 1.5m 띄워 둘러섬, 십자 통로 4개</td></tr>
   </table>
   <b>질감 출처</b> — 모두 CC0(자유 이용) 사진 텍스처를 현장 색에 맞춰 보정<br>
   바닥: ambientCG WoodFloor051 · 벽/기둥: Poly Haven oak_veneer_01 · 하부 목재: Poly Haven plywood · 러그 무늬: 직접 그린 페르시아풍 패턴<br><br>
@@ -122,12 +122,12 @@ const VENUE = {
 /* SHOW — 이번 공연 구성 */
 const SHOW = {
   center: { X: 17.4, Y: 9.0 },
-  rug: { w: 2.4, d: 1.6 },          // 페르시아 러그 한 장(m). 가로 2장 × 세로 3장 = 6장, 4.8 × 4.8m
+  rug: { w: 2.4, d: 1.6 },          // 페르시아 러그 한 장(m). 가로 3장 × 세로 2장 = 6장, 7.2 × 3.2m
   ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
-  ellipse: { a: 3.6, b: 3.6 },      // 찬양팀이 서는 원(반지름 3.6m = 지름 7.2m) — 지난 집회 사진 분석값
-  underlay: 7.8,                    // 러그 아래 어두운 바닥 천 한 변(m)
+  ellipse: { a: 4.5, b: 2.6 },      // 찬양팀이 서는 타원: 긴 방향 9.0m × 폭 5.2m (둘레는 지름 7.2m 원과 같음)
+  underlay: [9.8, 6.0],             // 러그 아래 어두운 바닥 천(m)
   slots: { drums: 3.0, keys: 2.2, inst: 1.6 },   // 자리 폭(m), 나머지는 보컬 7명이 균등 분할
-  audience: { r0: 5.9, r1: 9.1, rowGap: 0.8, pitch: 0.68, aisle: 1.5 },
+  audience: { a0: 6.3, b0: 4.1, depth: 4.0, rowGap: 0.8, pitch: 0.68, aisle: 1.5 },   // 회중 첫 줄 타원(반축)과 줄 깊이
   standDist: 5.35, standWallGap: 1.3, standHeight: 7.0, standAxis: 'NS',   // NS = 좌·우 측벽 앞
 };
 const L = VENUE.length, Wd = VENUE.width, HW = Wd / 2, C = SHOW.center;
@@ -600,10 +600,10 @@ const blockers = [];
   const side = std({ color: 0xcfc3a8, roughness: 1 }), top = std({ map: tRug, roughness: 0.95 });
   top.normalMap = null; photo(top, 'normalMap', 'carpet_n.jpg', 3, 2); top.normalScale.set(0.5, 0.5);
   const { w, d } = SHOW.rug;
-  const under = new THREE.Mesh(new THREE.BoxGeometry(SHOW.underlay, 0.004, SHOW.underlay), std({ color: 0x2a211c, roughness: 1 })); under.position.copy(P(C.X, C.Y, 0.008)); under.receiveShadow = true; dyn.add(under);
-  [[-1, -1, 0.004], [1, -1, -0.006], [-1, 0, 0.003], [1, 0, -0.004], [-1, 1, -0.005], [1, 1, 0.007]].forEach(([sx, sy, rot]) => {
+  const under = new THREE.Mesh(new THREE.BoxGeometry(SHOW.underlay[0], 0.004, SHOW.underlay[1]), std({ color: 0x2a211c, roughness: 1 })); under.position.copy(P(C.X, C.Y, 0.008)); under.receiveShadow = true; dyn.add(under);
+  [[-1, -1, 0.004], [0, -1, -0.005], [1, -1, 0.003], [-1, 1, -0.004], [0, 1, 0.006], [1, 1, -0.003]].forEach(([sx, sy, rot]) => {
     const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), [side, side, top, side, side, side]);
-    rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
+    rug.position.copy(P(C.X + sx * (w + 0.004), C.Y + sy * (d / 2 + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
   });
 }
 function makeGuitar(bass, color) {
@@ -723,15 +723,15 @@ const performers = [];
 }
 
 /* ---------- audience ---------- */
-const VIEW_AUD = [C.X + SHOW.audience.r0 * Math.cos(-0.63), C.Y + SHOW.audience.r0 * Math.sin(-0.63)];
+const VIEW_AUD = [C.X + SHOW.audience.a0 * Math.cos(-0.63), C.Y + SHOW.audience.b0 * Math.sin(-0.63)];
 const crowd = new THREE.Group(); dyn.add(crowd);
 const crowdSets = [];
 {
   const A = SHOW.audience, spots = [], d = SHOW.standDist, d2 = HW - SHOW.standWallGap, reserved = [[C.X - d, C.Y], [C.X + d, C.Y], [C.X, C.Y - d2], [C.X, C.Y + d2]];
-  for (let r = A.r0; r <= A.r1; r += A.rowGap) {
-    const n = Math.floor(2 * Math.PI * r / A.pitch), off = rnd();
+  for (let gap = 0; gap <= A.depth; gap += A.rowGap) {
+    const ra = A.a0 + gap, rb = A.b0 + gap, n = Math.floor(2 * Math.PI * Math.sqrt((ra * ra + rb * rb) / 2) / A.pitch), off = rnd();
     for (let k = 0; k < n; k++) {
-      const a = (k + off) / n * Math.PI * 2, dx = r * Math.cos(a), dy = r * Math.sin(a), X = C.X + dx, Y = C.Y + dy;
+      const a = (k + off) / n * Math.PI * 2, dx = ra * Math.cos(a), dy = rb * Math.sin(a), X = C.X + dx, Y = C.Y + dy;
       if (Math.abs(dx) < A.aisle / 2 || Math.abs(dy) < A.aisle / 2) continue;
       if (X < S.depth + 1.3 || X > L - 0.8 || Y < 0.9 || Y > Wd - 0.9) continue;
       if (X > X_.x0 - 0.7 && Y < X_.y1 + 0.7) continue;
@@ -892,7 +892,7 @@ function blocked(x, z) {
 function groundAt(x, z) {
   const Y = -z;
   if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + 0.4) return S.h / 2; }
-  return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d * 1.5 ? CY : 0;
+  return Math.abs(x - C.X) < SHOW.rug.w * 1.5 && Math.abs(Y - C.Y) < SHOW.rug.d ? CY : 0;
 }
 const tmp = new THREE.Vector3();
 let walkPh = 0;
