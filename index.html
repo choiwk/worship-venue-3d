@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>3D 공연장 v0.3 — 다목적실 (중앙 원형 무대)</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#060505;color:#eee;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+  .bar{position:fixed;left:0;right:0;display:flex;gap:6px;z-index:5;padding:0 10px;overflow-x:auto;
+    white-space:nowrap;scrollbar-width:none;touch-action:pan-x}
+  .bar::-webkit-scrollbar{display:none}
+  #views{top:10px}#opts{top:50px}
+  button{font:inherit;font-size:13px;color:#eee;background:rgba(18,16,14,.72);flex:0 0 auto;
+    border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 12px;cursor:pointer;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  button.on{background:#e9e4da;color:#191613;border-color:#e9e4da;font-weight:600}
+  #joy{position:fixed;left:22px;bottom:26px;width:124px;height:124px;border-radius:50%;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.22);z-index:5;touch-action:none}
+  #knob{position:absolute;left:37px;top:37px;width:50px;height:50px;border-radius:50%;
+    background:rgba(255,255,255,.34);pointer-events:none}
+  #hint{position:fixed;right:12px;bottom:14px;font-size:12px;color:rgba(255,255,255,.55);
+    text-align:right;z-index:4;line-height:1.5;pointer-events:none}
+  .panel{position:fixed;left:10px;right:10px;top:92px;max-width:430px;margin:0 auto;z-index:6;
+    background:rgba(14,13,12,.94);border:1px solid rgba(255,255,255,.16);border-radius:14px;
+    padding:14px 16px;font-size:13px;line-height:1.6;display:none;max-height:68vh;overflow:auto;touch-action:pan-y}
+  .panel h2{font-size:15px;margin:0 0 6px}
+  .panel table{width:100%;border-collapse:collapse;margin:6px 0}
+  .panel td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+  .row{display:flex;align-items:center;gap:10px;margin:8px 0}
+  .row label{flex:0 0 92px}.row input{flex:1;accent-color:#e9b46a;touch-action:pan-x}
+  .row small{flex:0 0 auto;color:rgba(255,255,255,.55)}
+  .g{display:inline-block;min-width:18px;text-align:center;border-radius:4px;font-size:11px;font-weight:700;padding:0 4px}
+  .gA{background:#3c8d4e}.gB{background:#3a6fc4}.gC{background:#c0533f}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:9;background:#060505}
+</style>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+<div id="loading">공연장을 짓는 중…</div>
+<div class="bar" id="views">
+  <button data-view="walk" class="on">걷기</button>
+  <button data-view="entrance">입구 시점</button>
+  <button data-view="performer">공연자 시점</button>
+  <button data-view="audience">관객 시점</button>
+  <button data-view="orbit">전체 보기</button>
+  <button data-view="first">1인칭</button>
+</div>
+<div class="bar" id="opts">
+  <button id="bShow" class="on">공연 조명</button>
+  <button id="bRehearsal">리허설 조명</button>
+  <button id="bLight">조명 조절</button>
+  <button id="bCrowd" class="on">관객</button>
+  <button id="bGrid">그리드</button>
+  <button id="bInfo">정보</button>
+</div>
+<div id="joy"><div id="knob"></div></div>
+<div id="hint">왼쪽 조이스틱: 이동 · 화면 드래그: 시점<br>PC: WASD / 방향키 + 마우스 드래그</div>
+
+<div class="panel" id="lightPanel">
+  <h2>조명 조절</h2>
+  <div class="row"><label>스탠드 조명</label><input type="range" id="sStand" min="0" max="100"></div>
+  <div class="row"><label>벽(기둥) 조명</label><input type="range" id="sCol" min="0" max="100"></div>
+  <div class="row"><label>천장등</label><input type="range" id="sHigh" min="0" max="100"></div>
+  <div class="row"><label>조명 색</label><small>오렌지</small><input type="range" id="sTemp" min="0" max="100"><small>흰색</small></div>
+  <div class="row"><label>스탠드 위치</label><button id="bAxis">좌·우 (측벽 앞)</button><small id="standH"></small></div>
+  <div style="text-align:right"><button data-close>닫기</button></div>
+</div>
+<div class="panel" id="info">
+  <h2>다목적실 3D v0.3 — 중앙 원형 무대</h2>
+  <table>
+    <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
+    <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
+    <tr><td>측벽 5m · 용마루 8m · 무대 0.4m · LED 크기</td><td><span class="g gC">C</span></td></tr>
+    <tr><td>동쪽(뒤) 벽 마감, 동쪽 구획 용도 — 사진 없음</td><td><span class="g gC">C</span></td></tr>
+  </table>
+  <b>공연 구성</b>
+  <table>
+    <tr><td>편성 (12명)</td><td>보컬 7 · 일렉 1 · 베이스 1 · 드럼 1 · 건반 2</td></tr>
+    <tr><td>공연자 원</td><td>반지름 3.2m, 모두 중앙을 바라봄</td></tr>
+    <tr><td>카펫</td><td>지름 9.4m 원형</td></tr>
+    <tr><td>스탠드 조명</td><td>좌·우 측벽 앞 2대, 각 4구 LED × 2단, 중앙 조준</td></tr>
+    <tr><td>관객</td><td>반지름 6m부터 원형, 십자 통로 4개</td></tr>
+  </table>
+  <b>질감 출처</b> — 모두 CC0(자유 이용) 사진 텍스처를 현장 색에 맞춰 보정<br>
+  바닥: ambientCG WoodFloor051 · 벽/기둥: Poly Haven oak_veneer_01 · 하부 목재: Poly Haven plywood · 카펫: ambientCG Carpet012<br><br>
+  <span class="g gA">A</span> 도면 표기값 · <span class="g gB">B</span> 사진으로 확인 · <span class="g gC">C</span> 추정값
+  <div style="margin-top:10px;text-align:right"><button data-close>닫기</button></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+/* =========================================================
+   VENUE — 건물 (단위 m). 실측값이 생기면 여기만 바꾸세요.
+   좌표: 도면 X(동쪽) → three.x,  도면 Y(북쪽) → three.z = -Y
+   ========================================================= */
+const VENUE = {
+  length: 30.0, width: 18.0, grid: [0, 7.5, 15, 22.5, 30],
+  eave: 5.0, ridge: 8.0,
+  stage: { depth: 4.75, zFrom: 0.3, zTo: 15.88, h: 0.4 },
+  screen: { w: 4.5, h: 2.5, bottom: 2.9 },
+  wainscot: 1.2, winTop: 4.5,
+  xbox: { x0: 27.12, x1: 30, y0: 0, y1: 8.3, h: 3.0 },
+  entry: { x1: 2.6, y0: 15.9, h: 3.2 },
+};
+/* SHOW — 이번 공연 구성 */
+const SHOW = {
+  center: { X: 17.4, Y: 9.0 },
+  ringR: 3.2, carpetR: 4.7,
+  vocals: [-78, -50.3, -22.7, 5, 32.7, 60.3, 88],     // 각도(°), 0° = 동쪽
+  guitar: 115, bass: 143, drums: 180, keys: [218, 252],
+  audience: { r0: 6.0, r1: 8.6, rowGap: 0.8, pitch: 0.68, aisle: 1.5 },
+  standDist: 5.35, standWallGap: 1.3, standHeight: 7.0, standAxis: 'NS',   // NS = 좌·우 측벽 앞
+};
+const L = VENUE.length, Wd = VENUE.width, HW = Wd / 2, C = SHOW.center;
+const P = (X, Y, h = 0) => new THREE.Vector3(X, h, -Y);
+const roofAt = Y => VENUE.eave + (VENUE.ridge - VENUE.eave) * (1 - Math.abs(Y - HW) / HW);
+const polar = (deg, r) => { const a = deg * Math.PI / 180; return [C.X + r * Math.cos(a), C.Y + r * Math.sin(a)]; };
+let seed = 20261112;
+const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+/* ---------- renderer / scene ---------- */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050404);
+scene.fog = new THREE.FogExp2(0x0b0907, 0.009);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 150);
+const arch = new THREE.Group(), dyn = new THREE.Group();
+scene.add(arch, dyn);
+
+/* ---------- textures ---------- */
+function mkTex(w, h, draw, srgb = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const rep = (t, x, y) => { const c = t.clone(); c.repeat.set(x, y); c.needsUpdate = true; return c; };
+function speckle(g, w, h, n, lo, hi, a = 0.5) {
+  for (let i = 0; i < n; i++) { const v = lo + Math.random() * (hi - lo) | 0; g.fillStyle = `rgba(${v},${v},${v},${a})`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+}
+const std = o => new THREE.MeshStandardMaterial(o);
+let envDirty = true;
+const loader = new THREE.TextureLoader();
+// 사진 텍스처: 불러오기에 성공했을 때만 적용 (실패하면 기본 색 유지)
+function photo(mat, slot, file, rx, ry, opt = {}) {
+  loader.load('tex/' + file, t => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8;
+    if (slot === 'map') { t.colorSpace = THREE.SRGBColorSpace; mat.color.set(opt.tint ?? 0xffffff); }
+    if (slot === 'roughnessMap') mat.roughness = opt.roughness ?? 1;
+    mat[slot] = t; mat.needsUpdate = true; envDirty = true;
+  }, undefined, () => {});
+}
+const tBlind = mkTex(256, 512, (g, w, h) => {
+  g.fillStyle = '#a98a5e'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#29282a'; g.fillRect(7, 7, w - 14, h - 14);
+  for (let y = 8; y < h - 8; y += 3) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.03})`; g.fillRect(7, y, w - 14, 1); }
+  speckle(g, w, h, 2500, 20, 70, 0.22);
+  g.fillStyle = '#19191b'; g.fillRect(7, h - 22, w - 14, 6);
+  g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = 2; g.strokeRect(7, 7, w - 14, h - 14);
+});
+const tDeck = mkTex(128, 128, (g, w, h) => {
+  g.fillStyle = '#d9d6cd'; g.fillRect(0, 0, w, h);
+  for (let x = 0; x < w; x += 32) { g.fillStyle = '#c6c2b7'; g.fillRect(x, 0, 9, h); g.fillStyle = '#e4e1d9'; g.fillRect(x + 9, 0, 3, h); }
+  speckle(g, w, h, 500, 150, 180, 0.2);
+});
+const tDeckB = mkTex(128, 8, (g, w, h) => { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#000'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 9, h); }, false);
+const tGrille = mkTex(128, 128, (g, w, h) => { g.fillStyle = '#19191b'; g.fillRect(0, 0, w, h); g.fillStyle = '#333337'; for (let y = 0; y < h; y += 4) for (let x = (y / 4 % 2) * 2; x < w; x += 4) g.fillRect(x, y, 2, 2); });
+const tGlow = mkTex(128, 128, (g, w, h) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.35, 'rgba(255,255,255,0.35)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); });
+const tWash = mkTex(64, 256, (g, w, h) => {
+  const v = g.createLinearGradient(0, h, 0, 0); v.addColorStop(0, 'rgba(255,255,255,1)'); v.addColorStop(0.25, 'rgba(255,255,255,0.45)'); v.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = v; g.fillRect(0, 0, w, h);
+  const s = g.createLinearGradient(0, 0, w, 0); s.addColorStop(0, 'rgba(0,0,0,0.85)'); s.addColorStop(0.3, 'rgba(0,0,0,0)'); s.addColorStop(0.7, 'rgba(0,0,0,0)'); s.addColorStop(1, 'rgba(0,0,0,0.85)');
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = s; g.fillRect(0, 0, w, h);
+});
+tWash.wrapS = tWash.wrapT = THREE.ClampToEdgeWrapping;
+const tAO = mkTex(8, 64, (g, w, h) => { const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,1)'); g.fillStyle = v; g.fillRect(0, 0, w, h); });
+const tLed = mkTex(64, 64, (g, w, h) => { g.fillStyle = '#050505'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; for (let k = 0; k < 7; k++) { const a = k * Math.PI / 3, r = k === 6 ? 0 : 17; g.beginPath(); g.arc(32 + Math.cos(a) * r, 32 + Math.sin(a) * r, 5, 0, 6.3); g.fill(); } });
+
+/* ---------- materials ---------- */
+const M = {
+  stageWall: std({ color: 0xd6b88c, roughness: 0.6, side: THREE.DoubleSide }),
+  eastWall:  std({ color: 0xbe9a6c, roughness: 0.78, side: THREE.DoubleSide }),
+  perf:      std({ color: 0xbe9a6c, roughness: 0.78 }),
+  wain:      std({ color: 0x6c482d, roughness: 0.5 }),
+  wainE:     std({ color: 0x6c482d, roughness: 0.5 }),
+  slat:      std({ color: 0xdec092, roughness: 0.5 }),
+  boxWood:   std({ color: 0xd6b88c, roughness: 0.62 }),
+  blind:     std({ map: tBlind, roughness: 0.92 }),
+  rail:      std({ color: 0x5a3d24, roughness: 0.5 }),
+  base:      std({ color: 0x2a211b, roughness: 0.6 }),
+  steel:     std({ color: 0x6d7378, roughness: 0.5, metalness: 0.45 }),
+  duct:      std({ color: 0x9a9ea2, roughness: 0.4, metalness: 0.6 }),
+  stageTop:  std({ color: 0xb58d5c, roughness: 0.4 }),
+  stageFace: std({ color: 0x6a4e33, roughness: 0.7 }),
+  white:     std({ color: 0xe9e6de, roughness: 0.6 }),
+  black:     std({ color: 0x131314, roughness: 0.55 }),
+  blackMetal:std({ color: 0x1a1a1c, roughness: 0.38, metalness: 0.7 }),
+  chrome:    std({ color: 0xc8c8cc, roughness: 0.22, metalness: 0.95 }),
+  tolex:     std({ color: 0x121213, roughness: 0.85 }),
+  grille:    std({ map: rep(tGrille, 6, 6), roughness: 0.9 }),
+  carpet:    std({ color: 0x3b3431, roughness: 1 }),
+  highbay:   new THREE.MeshBasicMaterial({ color: 0xfff1d0 }),
+  colLens:   new THREE.MeshBasicMaterial({ color: 0xffc890 }),
+  parLens:   new THREE.MeshBasicMaterial({ map: tLed, color: 0xffc890 }),
+  exit:      new THREE.MeshBasicMaterial({ color: 0x2bd46a }),
+};
+photo(M.stageWall, 'map', 'panel.jpg', 1 / 1.2, 1 / 2.4);
+photo(M.eastWall, 'map', 'perf.jpg', 1 / 0.6, 1 / 0.6);
+photo(M.perf, 'map', 'perf.jpg', L / 0.6, VENUE.eave / 0.6);
+photo(M.wain, 'map', 'wain.jpg', L / 1.2, 1);
+photo(M.wainE, 'map', 'wain.jpg', Wd / 1.2, 1);
+photo(M.slat, 'map', 'slat.jpg', 2, VENUE.eave / 1.2);
+photo(M.boxWood, 'map', 'panel.jpg', 2, 1.3);
+photo(M.stageTop, 'map', 'floor.jpg', 4, 13, { tint: 0xe2cfb4 });
+photo(M.carpet, 'map', 'carpet.jpg', 6, 6);
+photo(M.carpet, 'normalMap', 'carpet_n.jpg', 6, 6);
+
+function box(w, h, d, mat, x, y, z, o = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); m.castShadow = !!o.cast; m.receiveShadow = !!o.recv; (o.parent || arch).add(m); return m;
+}
+function beam(a, b, w, h, mat, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, a.distanceTo(b)), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.lookAt(b); parent.add(m); return m;
+}
+function cyl(r, mat, a, b, parent, seg = 10, r2 = r) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r2, r, a.distanceTo(b), seg), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  parent.add(m); return m;
+}
+function quad(a, b, c, d, mat, uvScale = 1) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([a, b, c, a, c, d].flatMap(v => [v.x, v.y, v.z]), 3));
+  const u = a.distanceTo(b) / uvScale, v = a.distanceTo(d) / uvScale;
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, u, 0, u, v, 0, 0, u, v, 0, v], 2));
+  g.computeVertexNormals(); return new THREE.Mesh(g, mat);
+}
+function textSprite(txt, size = 0.9, color = '#f2c14e') {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d'); g.font = 'bold 72px sans-serif'; g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 128, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true, fog: false })); s.scale.set(size * 2, size, 1); s.renderOrder = 10; return s;
+}
+const additive = (map, color) => new THREE.MeshBasicMaterial({ map, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+
+/* ---------- floor: 사진 질감(단풍나무 체육관 마루) + 코트 라인 ---------- */
+const floorMat = std({ color: 0xc59e6e, roughness: 0.3 });
+photo(floorMat, 'map', 'floor.jpg', L / 1.2, Wd / 1.2);
+photo(floorMat, 'normalMap', 'floor_n.jpg', L / 1.2, Wd / 1.2);
+photo(floorMat, 'roughnessMap', 'floor_r.jpg', L / 1.2, Wd / 1.2, { roughness: 0.95 });
+floorMat.normalScale.set(0.5, 0.5);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, Wd), floorMat);
+floor.rotation.x = -Math.PI / 2; floor.position.set(L / 2, 0, -HW); floor.receiveShadow = true; arch.add(floor);
+{
+  const W = 2048, H = Math.round(W * Wd / L), s = W / L;
+  const lines = mkTex(W, H, g => {
+    const cx = X => X * s, cy = Y => (Wd - Y) * s;
+    g.globalAlpha = 0.9;
+    g.strokeStyle = '#2f5a3a'; g.lineWidth = 3.5; g.strokeRect(cx(8.4), cy(13.5), 18 * s, 9 * s);
+    g.beginPath(); g.moveTo(cx(17.4), cy(13.5)); g.lineTo(cx(17.4), cy(4.5)); g.stroke();
+    g.strokeStyle = '#27324f'; g.lineWidth = 3; g.strokeRect(cx(10.7), cy(12.05), 13.4 * s, 6.1 * s);
+    const x0 = 5.4, x1 = 29.4, y0 = 1.5, y1 = 16.5, xm = (x0 + x1) / 2;
+    g.strokeStyle = '#efece4'; g.lineWidth = 4;
+    g.strokeRect(cx(x0), cy(y1), (x1 - x0) * s, (y1 - y0) * s);
+    g.beginPath(); g.moveTo(cx(xm), cy(y1)); g.lineTo(cx(xm), cy(y0)); g.stroke();
+    g.beginPath(); g.arc(cx(xm), cy(9), 1.8 * s, 0, Math.PI * 2); g.stroke();
+    g.save(); g.beginPath(); g.rect(cx(x0), cy(y1), (x1 - x0) * s, (y1 - y0) * s); g.clip();
+    for (const [bx, dir] of [[x0, 1], [x1, -1]]) {
+      const kx = bx + dir * 5.8;
+      g.strokeRect(Math.min(cx(bx), cx(kx)), cy(9 + 2.45), 5.8 * s, 4.9 * s);
+      g.beginPath(); g.arc(cx(kx), cy(9), 1.8 * s, 0, Math.PI * 2); g.stroke();
+      const hx = bx + dir * 1.575; g.beginPath();
+      if (dir > 0) g.arc(cx(hx), cy(9), 6.75 * s, -Math.PI / 2, Math.PI / 2); else g.arc(cx(hx), cy(9), 6.75 * s, Math.PI / 2, Math.PI * 1.5);
+      g.stroke();
+    }
+    g.restore();
+  });
+  lines.wrapS = lines.wrapT = THREE.ClampToEdgeWrapping;
+  const lm = new THREE.Mesh(new THREE.PlaneGeometry(L, Wd), std({ map: lines, transparent: true, roughness: 0.32, depthWrite: false }));
+  lm.rotation.x = -Math.PI / 2; lm.position.set(L / 2, 0.005, -HW); lm.receiveShadow = true; arch.add(lm);
+}
+// 벽과 바닥이 만나는 모서리의 자연스러운 어두움
+{
+  const ao = new THREE.MeshBasicMaterial({ map: tAO, transparent: true, opacity: 0.4, depthWrite: false, fog: false });
+  const strip = (len, x, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.8), ao); m.rotation.set(-Math.PI / 2, 0, ry, 'YXZ'); m.rotation.y = ry; m.position.set(x, 0.004, z); arch.add(m); };
+  strip(L, L / 2, -0.4, Math.PI); strip(L, L / 2, -Wd + 0.4, 0); strip(Wd, L - 0.4, -HW, Math.PI / 2); strip(Wd, VENUE.stage.depth + 0.8, -HW, -Math.PI / 2);
+}
+
+/* ---------- gable walls ---------- */
+function gableGeo() {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0); s.lineTo(Wd, 0); s.lineTo(Wd, VENUE.eave); s.lineTo(HW, VENUE.ridge); s.lineTo(0, VENUE.eave); s.closePath();
+  return new THREE.ShapeGeometry(s);
+}
+const westWall = new THREE.Mesh(gableGeo(), M.stageWall); westWall.rotation.y = Math.PI / 2; westWall.receiveShadow = true; arch.add(westWall);
+const eastWall = new THREE.Mesh(gableGeo(), M.eastWall); eastWall.rotation.y = Math.PI / 2; eastWall.position.x = L; arch.add(eastWall);
+box(0.05, VENUE.wainscot, Wd, M.wainE, L - 0.03, VENUE.wainscot / 2, -HW);
+box(0.08, 0.04, Wd, M.rail, L - 0.05, VENUE.wainscot + 0.02, -HW);
+box(0.07, 0.1, Wd, M.base, L - 0.04, 0.05, -HW);
+box(0.07, 0.1, Wd, M.base, 0.04, 0.05, -HW);
+box(0.06, 2.1, 1.0, M.white, 0.04, 1.05 + VENUE.stage.h, -1.0);
+box(0.07, 2.2, 1.8, M.rail, L - 0.05, 1.1, -10.64);
+box(0.02, 2.2, 0.02, M.black, L - 0.09, 1.1, -10.64);
+
+/* ---------- side walls ---------- */
+const sideGroup = { south: new THREE.Group(), north: new THREE.Group() };
+arch.add(sideGroup.south, sideGroup.north);
+const washMat = additive(tWash, 0xffc890), poolMat = additive(tGlow, 0xffc890);
+const haloMat = new THREE.SpriteMaterial({ map: tGlow, color: 0xffc890, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+for (const side of ['south', 'north']) {
+  const grp = sideGroup[side];
+  const zw = side === 'south' ? 0 : -Wd, inw = side === 'south' ? -1 : 1, ry = side === 'south' ? Math.PI : 0;
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(L, VENUE.eave), M.perf);
+  back.position.set(L / 2, VENUE.eave / 2, zw); back.rotation.y = ry; back.receiveShadow = true; grp.add(back);
+  box(L, VENUE.wainscot, 0.05, M.wain, L / 2, VENUE.wainscot / 2, zw + inw * 0.03, { parent: grp, recv: true });
+  box(L, 0.04, 0.09, M.rail, L / 2, VENUE.wainscot + 0.02, zw + inw * 0.05, { parent: grp });
+  box(L, 0.1, 0.07, M.base, L / 2, 0.05, zw + inw * 0.045, { parent: grp });
+  const wh = VENUE.winTop - VENUE.wainscot - 0.1;
+  for (let i = 0; i < 4; i++) for (const [a, b] of [[0.6, 3.45], [4.05, 6.9]]) {
+    const cx = VENUE.grid[i] + (a + b) / 2;
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(b - a, wh), M.blind);
+    w.position.set(cx, VENUE.wainscot + 0.1 + wh / 2, zw + inw * 0.02); w.rotation.y = ry; grp.add(w);
+    box(b - a, 0.12, 0.1, M.black, cx, VENUE.winTop + 0.03, zw + inw * 0.06, { parent: grp });
+  }
+  VENUE.grid.forEach((gx, i) => {
+    const x = Math.min(Math.max(gx, 0.3), L - 0.3), zf = zw + inw * 0.5;
+    box(0.6, VENUE.eave, 0.5, M.slat, x, VENUE.eave / 2, zw + inw * 0.25, { parent: grp, recv: true });
+    const fx = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.34, 14), M.blackMetal); fx.position.set(x, 3.4, zf + inw * 0.1); grp.add(fx);
+    box(0.04, 0.05, 0.1, M.blackMetal, x, 3.4, zf + inw * 0.05, { parent: grp });
+    for (const s of [1, -1]) {
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), M.colLens);
+      lens.rotation.x = -s * Math.PI / 2; lens.position.set(x, 3.4 + s * 0.172, zf + inw * 0.1); grp.add(lens);
+      const hgt = s > 0 ? 1.5 : 2.6;
+      const wash = new THREE.Mesh(new THREE.PlaneGeometry(0.58, hgt), washMat);
+      wash.position.set(x, 3.4 + s * (0.17 + hgt / 2), zf + inw * 0.006); wash.rotation.y = ry; if (s < 0) wash.rotation.z = Math.PI; grp.add(wash);
+      const halo = new THREE.Sprite(haloMat); halo.scale.setScalar(0.5); halo.position.set(x, 3.4 + s * 0.2, zf + inw * 0.12); grp.add(halo);
+    }
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), poolMat);
+    pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.012, zf + inw * 0.7); grp.add(pool);
+    if (i === 1 || i === 3) { const ex = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.03), M.exit); ex.position.set(x, 2.3, zf + inw * 0.02); grp.add(ex); }
+  });
+  const dy = side === 'south' ? 0.7 : Wd - 0.7;
+  cyl(0.16, M.duct, P(0, dy, VENUE.eave - 0.25), P(L, dy, VENUE.eave - 0.25), grp, 14);
+}
+
+/* ---------- roof ---------- */
+const roofGroup = new THREE.Group(); arch.add(roofGroup);
+{
+  const deck = std({ map: tDeck, bumpMap: tDeckB, bumpScale: 1.5, roughness: 0.85, side: THREE.DoubleSide });
+  const E = VENUE.eave, R = VENUE.ridge;
+  roofGroup.add(quad(P(0, 0, E), P(L, 0, E), P(L, HW, R), P(0, HW, R), deck, 0.6));
+  roofGroup.add(quad(P(0, Wd, E), P(L, Wd, E), P(L, HW, R), P(0, HW, R), deck, 0.6));
+  for (const gx of VENUE.grid) {
+    const x = Math.min(Math.max(gx, 0.2), L - 0.2);
+    beam(P(x, 0.25, E - 0.3), P(x, HW, R - 0.45), 0.25, 0.6, M.steel, roofGroup);
+    beam(P(x, Wd - 0.25, E - 0.3), P(x, HW, R - 0.45), 0.25, 0.6, M.steel, roofGroup);
+  }
+  beam(P(0, HW, R - 0.4), P(L, HW, R - 0.4), 0.3, 0.45, M.steel, roofGroup);
+  beam(P(0, 0.3, E - 0.25), P(L, 0.3, E - 0.25), 0.25, 0.45, M.steel, roofGroup);
+  beam(P(0, Wd - 0.3, E - 0.25), P(L, Wd - 0.3, E - 0.25), 0.25, 0.45, M.steel, roofGroup);
+  for (let k = 1; k < 6; k++) for (const Y of [HW * k / 6, Wd - HW * k / 6]) beam(P(0, Y, roofAt(Y) - 0.15), P(L, Y, roofAt(Y) - 0.15), 0.08, 0.16, M.steel, roofGroup);
+  for (let i = 0; i < 4; i++) for (const [y0, y1] of [[1, HW - 0.5], [Wd - 1, HW + 0.5]]) {
+    const a = VENUE.grid[i], b = VENUE.grid[i + 1], h0 = roofAt(y0) - 0.3, h1 = roofAt(y1) - 0.3;
+    cyl(0.008, M.steel, P(a, y0, h0), P(b, y1, h1), roofGroup, 4); cyl(0.008, M.steel, P(b, y0, h0), P(a, y1, h1), roofGroup, 4);
+  }
+  for (const X of [3.75, 11.25, 18.75, 26.25]) for (const Y of [4.5, 13.5]) {
+    const h = roofAt(Y) - 1.0;
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.28, 0.3, 16, 1, true), M.steel); shade.position.copy(P(X, Y, h)); roofGroup.add(shade);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.26, 16), M.highbay); glow.rotation.x = Math.PI / 2; glow.position.copy(P(X, Y, h - 0.16)); roofGroup.add(glow);
+    cyl(0.01, M.black, P(X, Y, h + 0.15), P(X, Y, roofAt(Y) - 0.1), roofGroup, 4);
+  }
+  for (const Y of [7.6, 10.4]) {      // 건물에 원래 달린 무대 쪽 조명 배튼 (이번 공연 미사용)
+    cyl(0.04, M.blackMetal, P(1.2, Y, 7.0), P(13, Y, 7.0), roofGroup);
+    for (let X = 1.8; X < 13; X += 1.6) { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.28, 12), M.blackMetal); f.position.copy(P(X, Y, 6.8)); roofGroup.add(f); }
+  }
+}
+
+/* ---------- fixed stage, boxes, screen ---------- */
+const S = VENUE.stage, E_ = VENUE.entry, X_ = VENUE.xbox;
+box(S.depth, S.h, S.zTo - S.zFrom, M.stageTop, S.depth / 2, S.h / 2, -(S.zFrom + S.zTo) / 2, { cast: true, recv: true });
+box(0.4, S.h / 2, S.zTo - S.zFrom, M.stageFace, S.depth + 0.2, S.h / 4, -(S.zFrom + S.zTo) / 2, { recv: true });
+box(E_.x1, E_.h, Wd - E_.y0, M.boxWood, E_.x1 / 2, E_.h / 2, -(E_.y0 + Wd) / 2, { cast: true, recv: true });
+box(0.06, 2.1, 1.0, M.white, E_.x1 + 0.03, 0.6 + 1.05, -(E_.y0 + 1.0));
+for (let k = 0; k < 4; k++) box(0.35, 0.15 * (k + 1), 1.2, M.stageFace, E_.x1 + 1.4 - k * 0.35, 0.075 * (k + 1), -(E_.y0 + 1.0), { recv: true });
+box(X_.x1 - X_.x0, X_.h, X_.y1 - X_.y0, M.boxWood, (X_.x0 + X_.x1) / 2, X_.h / 2, -(X_.y0 + X_.y1) / 2, { cast: true, recv: true });
+box(0.05, 2.1, 0.95, M.white, X_.x0 - 0.02, 1.05, -4.0);
+box(0.6, 1.1, 0.7, M.white, 2.2, S.h + 0.55, -HW, { cast: true });
+for (const z of [-0.6, -Wd + 0.6]) box(0.42, 0.7, 0.42, M.tolex, 4.6, 3.6, z);
+
+const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360;
+const scrG = scrC.getContext('2d'), scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace;
+const screenMat = new THREE.MeshBasicMaterial({ map: scrT });
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(VENUE.screen.w, VENUE.screen.h), screenMat);
+screen.rotation.y = Math.PI / 2; screen.position.set(0.06, VENUE.screen.bottom + VENUE.screen.h / 2, -HW); arch.add(screen);
+box(0.08, VENUE.screen.h + 0.12, VENUE.screen.w + 0.12, M.black, 0.03, screen.position.y, -HW);
+function drawScreen(dim) {
+  const g = scrG, w = 640, h = 360, grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#0e1420'); grd.addColorStop(1, '#1d1a22'); g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#e9e6df'; g.textAlign = 'center'; g.font = '34px sans-serif'; g.fillText('함께 찬양해요', w / 2, h / 2 + 10);
+  screenMat.color.setScalar(dim); scrT.needsUpdate = true;
+}
+
+/* =========================================================
+   LIGHTING — 천장등 / 벽(기둥) 조명 / 양쪽 스탠드 조명
+   ========================================================= */
+const hemi = new THREE.HemisphereLight(0xfff0dc, 0x3a2a1c, 0.5); scene.add(hemi);
+const key = new THREE.DirectionalLight(0xfff1dc, 0.8);
+key.position.copy(P(C.X + 1.5, C.Y - 1, 22)); key.target.position.copy(P(C.X, C.Y, 0)); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03; key.shadow.radius = 4;
+Object.assign(key.shadow.camera, { left: -16, right: 16, top: 11, bottom: -11, near: 5, far: 30 });
+scene.add(key, key.target);
+const warm = [5, 15, 25].map(X => { const p = new THREE.PointLight(0xffdcae, 70, 0, 2); p.position.copy(P(X, HW, 6.0)); scene.add(p); return p; });
+const wallPts = [[7.5, 1.3], [22.5, 1.3], [7.5, Wd - 1.3], [22.5, Wd - 1.3]].map(([X, Y]) => { const p = new THREE.PointLight(0xffc890, 24, 14, 2); p.position.copy(P(X, Y, 3.3)); scene.add(p); return p; });
+
+// 스탠드 조명: 삼각대 + 폴 + T바 2단 × LED 파 4구
+const standGroup = new THREE.Group(); scene.add(standGroup);
+const standSpots = [], standCones = [], standBlock = [];
+function buildStands() {
+  standSpots.forEach(sp => { scene.remove(sp, sp.target); sp.dispose(); }); standCones.forEach(c => { scene.remove(c); c.geometry.dispose(); });
+  standSpots.length = standCones.length = standBlock.length = 0; standGroup.clear();
+  const EW = SHOW.standAxis === 'EW', d = EW ? SHOW.standDist : HW - SHOW.standWallGap;
+  const pos = EW ? [[C.X - d, C.Y], [C.X + d, C.Y]] : [[C.X, C.Y - d], [C.X, C.Y + d]];
+  let Hshown = 0;
+  pos.forEach(([X, Y]) => {
+    const H = Math.min(SHOW.standHeight, roofAt(Y) - 0.5); Hshown = H;
+    const g = new THREE.Group(); g.position.copy(P(X, Y)); standGroup.add(g); standBlock.push([X, Y, 0.45]);
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    for (let k = 0; k < 3; k++) { const a = k * 2.094 + 0.4; cyl(0.018, M.blackMetal, V(0, 1.05, 0), V(Math.cos(a) * 0.85, 0.02, Math.sin(a) * 0.85), g, 6); cyl(0.01, M.blackMetal, V(0, 0.35, 0), V(Math.cos(a) * 0.55, 0.38, Math.sin(a) * 0.55), g, 5); }
+    cyl(0.03, M.blackMetal, V(0, 0.1, 0), V(0, H * 0.5, 0), g, 8); cyl(0.024, M.blackMetal, V(0, H * 0.5, 0), V(0, H * 0.8, 0), g, 8); cyl(0.018, M.blackMetal, V(0, H * 0.8, 0), V(0, H, 0), g, 8);
+    const dist = Math.hypot(X - C.X, Y - C.Y);
+    [H - 0.05, H - 1.05].forEach((h, bi) => {
+      const bar = new THREE.Group(); bar.position.set(0, h, 0); g.add(bar); bar.lookAt(P(C.X, C.Y, h));
+      box(1.3, 0.07, 0.08, M.blackMetal, 0, 0, 0.05, { parent: bar });
+      const tilt = Math.atan2(h - 1.0, dist);
+      for (const x of [-0.5, -0.17, 0.17, 0.5]) {
+        const par = new THREE.Group(); par.position.set(x, -0.2, 0.06); par.rotation.x = tilt; bar.add(par);
+        box(0.23, 0.23, 0.1, M.blackMetal, 0, 0, 0, { parent: par });
+        const lens = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), M.parLens); lens.position.z = 0.052; par.add(lens);
+        box(0.012, 0.2, 0.03, M.blackMetal, x - 0.125, -0.1, 0.06, { parent: bar }); box(0.012, 0.2, 0.03, M.blackMetal, x + 0.125, -0.1, 0.06, { parent: bar });
+      }
+      const from = P(X, Y, h - 0.2), aim = P(C.X, C.Y, 1.0);
+      const sp = new THREE.SpotLight(0xffc890, 0, 0, 0.5, 0.75, 2); sp.position.copy(from); sp.target.position.copy(aim); scene.add(sp, sp.target);
+      if (bi === 0 && shadowsOn) { sp.castShadow = true; sp.shadow.mapSize.set(1024, 1024); sp.shadow.bias = -0.0005; sp.shadow.normalBias = 0.03; sp.shadow.camera.near = 1; sp.shadow.camera.far = 18; }
+      standSpots.push(sp);
+      if (bi === 0) {
+        const len = from.distanceTo(aim) + 1.2, dir = aim.clone().sub(from).normalize();
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(Math.tan(0.5) * len, len, 28, 1, true), new THREE.MeshBasicMaterial({ color: 0xffc890, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        cone.position.copy(from).addScaledVector(dir, len / 2); cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir); scene.add(cone); standCones.push(cone);
+      }
+    });
+  });
+  const el = document.getElementById('standH'); if (el) el.textContent = `높이 ${Hshown.toFixed(1)}m`;
+  document.getElementById('bAxis').textContent = EW ? '앞·뒤 (긴 방향)' : '좌·우 (측벽 앞)';
+}
+let shadowsOn = true;
+const light = { high: 0, col: 0.5, stand: 1, temp: 0.2 }, lightTgt = { ...light };
+const c2700 = new THREE.Color(1.0, 0.62, 0.34), c6500 = new THREE.Color(1.0, 0.97, 0.94), lc = new THREE.Color();
+function applyLights() {
+  const { high, col, stand, temp } = light;
+  lc.copy(c2700).lerp(c6500, temp);
+  hemi.intensity = 0.015 + 0.42 * high + 0.05 * col + 0.02 * stand;
+  key.intensity = 0.75 * high + 0.06 * col;
+  warm.forEach(p => p.intensity = 70 * high);
+  wallPts.forEach(p => { p.intensity = 26 * col; p.color.copy(lc); });
+  M.highbay.color.setRGB(1, 0.93, 0.8).multiplyScalar(0.03 + 1.3 * high);
+  M.colLens.color.copy(lc).multiplyScalar(0.05 + 2.2 * col);
+  washMat.color.copy(lc); poolMat.color.copy(lc); haloMat.color.copy(lc);
+  washMat.opacity = 0.7 * col; poolMat.opacity = 0.14 * col; haloMat.opacity = 0.7 * col;
+  M.parLens.color.copy(lc).multiplyScalar(0.03 + 3.2 * stand);
+  standSpots.forEach(sp => { sp.intensity = 210 * stand; sp.color.copy(lc); });
+  standCones.forEach(c => { c.material.color.copy(lc); c.material.opacity = 0.013 * stand * (1 - 0.6 * high); });
+  renderer.toneMappingExposure = 1.0 + 0.15 * (1 - high);
+}
+
+/* =========================================================
+   PEOPLE — 사람 형태 (관절별 지오메트리)
+   ========================================================= */
+const SG = 8;
+const GEO = {
+  thigh: new THREE.CylinderGeometry(0.084, 0.058, 0.42, SG).translate(0, -0.21, 0),
+  shin: new THREE.CylinderGeometry(0.056, 0.042, 0.42, SG).translate(0, -0.21, 0),
+  knee: new THREE.SphereGeometry(0.057, SG, 5),
+  foot: new THREE.CapsuleGeometry(0.046, 0.15, 2, 6).rotateX(Math.PI / 2).scale(1, 0.8, 1).translate(0, -0.445, 0.05),
+  torso: new THREE.LatheGeometry([[0.001, -0.07], [0.14, -0.06], [0.168, 0], [0.158, 0.08], [0.138, 0.2], [0.16, 0.38], [0.182, 0.48], [0.16, 0.545], [0.07, 0.58], [0.001, 0.585]].map(p => new THREE.Vector2(...p)), 10).scale(1, 1, 0.6),
+  shoulder: new THREE.SphereGeometry(0.056, SG, 5),
+  upper: new THREE.CylinderGeometry(0.05, 0.04, 0.27, SG).translate(0, -0.135, 0),
+  fore: new THREE.CylinderGeometry(0.04, 0.03, 0.24, SG).translate(0, -0.12, 0),
+  hand: new THREE.SphereGeometry(0.042, 6, 5).scale(0.8, 1.3, 0.6).translate(0, -0.285, 0),
+  neck: new THREE.CylinderGeometry(0.046, 0.05, 0.1, SG),
+  head: new THREE.SphereGeometry(0.1, 10, 8).scale(0.88, 1.13, 1.0),
+  hair: new THREE.SphereGeometry(0.105, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.56).scale(0.93, 1.15, 1.05),
+  longHair: new THREE.SphereGeometry(0.1, 8, 6).scale(1.0, 1.6, 0.55),
+};
+function makePerson(o = {}) {
+  const g = new THREE.Group();
+  const mats = o.mats ?? {
+    top: std({ color: o.top ?? 0x444444, roughness: 0.92 }), bottom: std({ color: o.bottom ?? 0x1e1e22, roughness: 0.92 }),
+    skin: std({ color: o.skin ?? 0xc9a184, roughness: 0.7 }), hair: std({ color: o.hair ?? 0x15110e, roughness: 0.8 }), shoe: std({ color: o.shoe ?? 0x0f0f10, roughness: 0.6 }),
+  };
+  const add = (parent, geo, cat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mats[cat]); m.position.set(x, y, z); m.userData.cat = cat; m.castShadow = m.receiveShadow = true; parent.add(m); return m; };
+  const seated = !!o.seated, hip = seated ? 0.54 : 0.9, legs = [], arms = [];
+  for (const sx of [-1, 1]) {
+    const lg = new THREE.Group(); lg.position.set(sx * 0.092, hip, 0); add(lg, GEO.thigh, 'bottom');
+    const kn = new THREE.Group(); kn.position.y = -0.41; lg.add(kn); add(kn, GEO.knee, 'bottom'); add(kn, GEO.shin, 'bottom'); add(kn, GEO.foot, 'shoe');
+    if (seated) { lg.rotation.x = -1.45; kn.rotation.x = 1.45; }
+    g.add(lg); legs.push({ hip: lg, knee: kn });
+  }
+  add(g, GEO.torso, 'top', 0, hip, 0);
+  add(g, GEO.neck, 'skin', 0, hip + 0.62, 0); add(g, GEO.head, 'skin', 0, hip + 0.745, 0);
+  add(g, GEO.hair, 'hair', 0, hip + 0.752, -0.012).rotation.x = -0.3;
+  if (o.longHair) add(g, GEO.longHair, 'hair', 0, hip + 0.63, -0.075);
+  const pose = o.arms ?? [[0.06, 0.07, 0.25], [0.06, 0.07, 0.25]];
+  [-1, 1].forEach((sx, i) => {
+    const [fw, out, bend] = pose[i];
+    const sh = new THREE.Group(); sh.position.set(sx * 0.205, hip + 0.5, 0); sh.rotation.set(-fw, 0, sx * out);
+    add(sh, GEO.shoulder, 'top'); add(sh, GEO.upper, 'top');
+    const el = new THREE.Group(); el.position.y = -0.27; el.rotation.x = -bend; sh.add(el);
+    add(el, GEO.fore, o.shortSleeve ? 'skin' : 'top'); add(el, GEO.hand, 'skin');
+    g.add(sh); arms.push({ sh, el });
+  });
+  g.scale.setScalar((o.h ?? 1.72) / 1.77);
+  return { g, legs, arms, hip };
+}
+function bakePerson(p) {      // 관객용: 부위별로 합쳐 인스턴싱
+  p.g.scale.setScalar(1); p.g.updateMatrixWorld(true);
+  const cats = {};
+  p.g.traverse(m => { if (m.isMesh) (cats[m.userData.cat] ||= []).push(m.geometry.clone().applyMatrix4(m.matrixWorld)); });
+  return Object.fromEntries(Object.entries(cats).map(([k, a]) => [k, mergeGeometries(a)]));
+}
+
+/* =========================================================
+   CENTER STAGE — 12명: 보컬 7, 일렉, 베이스, 드럼, 건반 2
+   ========================================================= */
+const CY = 0.015;
+const faceCenter = (o, away = false) => { const t = P(C.X, C.Y); o.rotation.y = Math.atan2(t.x - o.position.x, t.z - o.position.z) + (away ? Math.PI : 0); };
+const place = (o, deg, r, h = CY) => { const [X, Y] = polar(deg, r); o.position.copy(P(X, Y, h)); return o; };
+const shadowAll = g => g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+const blockers = [];
+{
+  const carpet = new THREE.Mesh(new THREE.CylinderGeometry(SHOW.carpetR, SHOW.carpetR, CY, 80), M.carpet);
+  carpet.position.copy(P(C.X, C.Y, CY / 2)); carpet.receiveShadow = true; dyn.add(carpet);
+}
+function makeGuitar(bass, color) {
+  const g = new THREE.Group(), body = std({ color, roughness: 0.25 }), neckM = std({ color: 0xb8935c, roughness: 0.5 }), fret = std({ color: 0x2a1c12, roughness: 0.6 });
+  const bs = bass ? 1.08 : 1, len = bass ? 0.58 : 0.48;
+  for (const [x, r] of [[-0.08, 0.165], [0.10, 0.125]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(r * bs, r * bs, 0.045, 22), body); c.rotation.x = Math.PI / 2; c.position.x = x * bs; g.add(c); }
+  const mk = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  mk(0.2 * bs, 0.2 * bs, 0.045, body, 0.01, 0, 0);
+  mk(len, 0.05, 0.024, neckM, 0.2 + len / 2, 0, 0.008); mk(len, 0.044, 0.006, fret, 0.2 + len / 2, 0, 0.023);
+  mk(bass ? 0.19 : 0.16, 0.078, 0.016, neckM, 0.2 + len + (bass ? 0.095 : 0.08), 0.008, 0);
+  mk(0.022, 0.075, 0.01, M.black, -0.02, 0, 0.026); mk(0.022, 0.075, 0.01, M.black, 0.075, 0, 0.026); mk(0.03, 0.08, 0.012, M.chrome, -0.14, 0, 0.026);
+  shadowAll(g); return g;
+}
+function makeAmp(w, h, d) {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M.tolex); b.position.y = h / 2; b.castShadow = true; g.add(b);
+  const gr = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.06, h - 0.14), M.grille); gr.position.set(0, h / 2 - 0.04, d / 2 + 0.002); g.add(gr);
+  const pn = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, 0.05, 0.01), M.chrome); pn.position.set(0, h - 0.05, d / 2 + 0.003); g.add(pn);
+  return g;
+}
+function makeMicStand() {
+  const g = new THREE.Group(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+  for (let k = 0; k < 3; k++) { const a = k * 2.094 + 0.5; cyl(0.008, M.blackMetal, V(0, 0.1, 0), V(Math.cos(a) * 0.3, 0.012, Math.sin(a) * 0.3), g, 5); }
+  cyl(0.011, M.blackMetal, V(0, 0.08, 0), V(0, 1.42, 0), g, 6);
+  cyl(0.019, M.blackMetal, V(0, 1.4, -0.03), V(0, 1.5, 0.1), g, 8);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.027, 10, 8), M.chrome); head.position.set(0, 1.52, 0.125); g.add(head);
+  shadowAll(g); return g;
+}
+const tKeys = mkTex(1024, 64, (c, w, h) => {
+  c.fillStyle = '#eceae3'; c.fillRect(0, 0, w, h); const ww = w / 52;
+  c.fillStyle = '#8d8d8d'; for (let i = 0; i < 52; i++) c.fillRect(i * ww, 0, 1, h);
+  c.fillStyle = '#0d0d0d'; for (let i = 0; i < 51; i++) if ([0, 1, 3, 4, 5].includes((i + 5) % 7)) c.fillRect((i + 1) * ww - ww * 0.3, 0, ww * 0.6, h * 0.62);
+});
+function makeKeys(seated) {
+  const g = new THREE.Group(), kh = seated ? 0.76 : 1.0;
+  const mk = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; g.add(b); return b; };
+  mk(1.32, 0.1, 0.32, M.black, 0, kh, 0);
+  const keys = new THREE.Mesh(new THREE.PlaneGeometry(1.22, 0.14), std({ map: tKeys, roughness: 0.3 })); keys.rotation.x = -Math.PI / 2; keys.rotation.z = Math.PI; keys.position.set(0, kh + 0.052, -0.08); g.add(keys);
+  for (const sx of [-0.5, 0.5]) { mk(0.03, kh - 0.06, 0.03, M.blackMetal, sx, (kh - 0.06) / 2, -0.1); mk(0.03, kh - 0.06, 0.03, M.blackMetal, sx, (kh - 0.06) / 2, 0.1); mk(0.03, 0.03, 0.45, M.blackMetal, sx, 0.02, 0); }
+  mk(1.0, 0.03, 0.03, M.blackMetal, 0, 0.3, 0.1);
+  mk(0.25, 0.3, 0.02, M.black, 0, kh + 0.22, 0.1).rotation.x = 0.25;
+  mk(0.1, 0.04, 0.2, M.blackMetal, 0.15, 0.02, -0.2);
+  if (seated) { mk(0.62, 0.07, 0.32, M.tolex, 0, 0.5, -0.6); for (const sx of [-0.27, 0.27]) for (const sz of [-0.72, -0.48]) mk(0.03, 0.47, 0.03, M.blackMetal, sx, 0.235, sz); }
+  return g;
+}
+function makeDrums() {
+  const g = new THREE.Group(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const shell = std({ color: 0x2a1410, roughness: 0.3, metalness: 0.1 }), head = std({ color: 0xdedbd0, roughness: 0.6 }), cym = std({ color: 0xa8842f, roughness: 0.32, metalness: 0.9 });
+  const drum = (r, h, x, y, z, rx = 0) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 22), [shell, head, shell]); m.position.set(x, y, z); m.rotation.x = rx; g.add(m); return m; };
+  drum(0.28, 0.42, 0, 0.29, 0.08, Math.PI / 2);
+  drum(0.18, 0.14, 0.3, 0.64, -0.36, -0.08); cyl(0.012, M.chrome, V(0.3, 0.02, -0.36), V(0.3, 0.57, -0.36), g, 6);
+  drum(0.14, 0.2, 0.19, 0.84, 0.05, -0.35); drum(0.155, 0.22, -0.19, 0.83, 0.05, -0.35);
+  drum(0.2, 0.38, -0.52, 0.5, -0.4); for (let k = 0; k < 3; k++) { const a = k * 2.094; cyl(0.008, M.chrome, V(-0.52 + Math.cos(a) * 0.21, 0.02, -0.4 + Math.sin(a) * 0.21), V(-0.52 + Math.cos(a) * 0.21, 0.45, -0.4 + Math.sin(a) * 0.21), g, 5); }
+  const cymbal = (r, x, y, z, rx, rz) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.03, r, 0.025, 24), cym); m.position.set(x, y, z); m.rotation.set(rx, 0, rz); g.add(m); cyl(0.011, M.chrome, V(x, 0.02, z), V(x, y - 0.01, z), g, 6); };
+  cymbal(0.18, 0.64, 0.92, -0.3, 0, 0); cymbal(0.18, 0.64, 0.95, -0.3, 0, 0);
+  cymbal(0.22, 0.52, 1.32, 0.22, -0.2, 0.15); cymbal(0.26, -0.6, 1.12, 0.06, -0.22, -0.12);
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.08, 16), M.tolex); seat.position.set(0, 0.5, -0.8); g.add(seat); cyl(0.02, M.chrome, V(0, 0.02, -0.8), V(0, 0.46, -0.8), g, 6);
+  shadowAll(g); return g;
+}
+function cable(pts, r = 0.007) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(([X, Y]) => P(X, Y, CY + r + 0.002)));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, r, 5), M.black); m.receiveShadow = true; dyn.add(m);
+}
+const performers = [];
+{
+  const R = SHOW.ringR, SB = polar(166, 1.5);
+  const looks = [
+    { top: 0xcfc8b8, bottom: 0x202026, arms: [[2.5, 0.25, 0.35], [0.06, 0.07, 0.25]], h: 1.64, longHair: true },
+    { top: 0x283047, bottom: 0x7d6f5a, arms: [[0.3, 0.02, 1.9], [0.3, 0.02, 1.9]], h: 1.76 },
+    { top: 0x5b2a2d, bottom: 0x1b1b1e, arms: [[0.06, 0.07, 0.25], [2.4, 0.3, 0.4]], h: 1.62, longHair: true },
+    { top: 0x4a5241, bottom: 0x232327, arms: [[0.1, 0.1, 0.6], [0.1, 0.1, 0.6]], h: 1.78 },
+    { top: 0xb7a78c, bottom: 0x2a2f3a, arms: [[2.3, 0.4, 0.3], [2.3, 0.4, 0.3]], h: 1.66, longHair: true },
+    { top: 0x1c1c1f, bottom: 0x4f4840, arms: [[0.3, 0.02, 1.8], [0.06, 0.07, 0.25]], h: 1.74 },
+    { top: 0x8e8474, bottom: 0x1d2028, arms: [[0.06, 0.07, 0.25], [0.3, 0.02, 1.8]], h: 1.60, longHair: true },
+  ];
+  SHOW.vocals.forEach((deg, i) => {
+    const p = makePerson(looks[i]); place(p.g, deg, R); faceCenter(p.g); dyn.add(p.g); performers.push({ ...p, ph: i * 1.3 });
+    const st = makeMicStand(); place(st, deg, R - 0.34); faceCenter(st, true); dyn.add(st);
+    cable([polar(deg, R - 0.34), polar(deg + (deg > 0 ? 12 : -12), 2.1), polar(deg > 5 ? 125 : 235, 1.5), SB]);
+    blockers.push([...polar(deg, R), 0.38]);
+  });
+  for (const [deg, bass, col, ampDeg] of [[SHOW.bass, true, 0x2a2420, 156], [SHOW.guitar, false, 0x7c2420, 102]]) {
+    const p = makePerson({ top: bass ? 0x34343a : 0xa8a193, bottom: 0x1a1a1e, arms: [[0.25, 0.08, 1.45], [0.6, 0.42, 0.55]], h: bass ? 1.77 : 1.73 });
+    const gt = makeGuitar(bass, col); gt.position.set(0.03, p.hip + 0.12, 0.17); gt.rotation.z = 0.32; p.g.add(gt);
+    place(p.g, deg, R); faceCenter(p.g); dyn.add(p.g); performers.push({ ...p, ph: deg });
+    const amp = bass ? makeAmp(0.6, 0.78, 0.4) : makeAmp(0.6, 0.5, 0.28); place(amp, ampDeg, 4.05); faceCenter(amp); dyn.add(amp);
+    cable([polar(deg, R + 0.1), polar((deg + ampDeg) / 2, R + 0.6), polar(ampDeg, 3.8)]);
+    blockers.push([...polar(deg, R), 0.42], [...polar(ampDeg, 4.05), 0.45]);
+  }
+  // 드럼
+  const kit = makeDrums(); place(kit, SHOW.drums, R - 0.35); faceCenter(kit); dyn.add(kit);
+  const drummer = makePerson({ top: 0x26262a, bottom: 0x2d2a26, seated: true, arms: [[0.75, 0.3, 1.0], [0.75, 0.3, 1.0]], h: 1.75 });
+  drummer.g.position.set(0, 0, -0.8); kit.add(drummer.g); performers.push({ ...drummer, ph: 4, seated: true });
+  for (const a of drummer.arms) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.4, 5), std({ color: 0xc9a66b, roughness: 0.6 })); st.position.set(0, -0.3, 0.12); st.rotation.x = 1.2; a.el.add(st); }
+  blockers.push([...polar(SHOW.drums, R), 1.05]);
+  // 건반 2대 (하나는 앉아서, 하나는 서서)
+  SHOW.keys.forEach((deg, i) => {
+    const seated = i === 0, kb = makeKeys(seated); place(kb, deg, R - 0.5); faceCenter(kb); dyn.add(kb);
+    const pl = makePerson(seated ? { top: 0xd9d3c6, bottom: 0x20242c, seated: true, arms: [[0.5, 0.05, 1.1], [0.5, 0.05, 1.1]], h: 1.7 } : { top: 0x3b4237, bottom: 0x18181b, arms: [[0.15, 0.05, 1.25], [0.15, 0.05, 1.25]], h: 1.68, longHair: true });
+    pl.g.position.set(0, 0, seated ? -0.56 : -0.42); kb.add(pl.g); performers.push({ ...pl, ph: 7 + i, seated: true });
+    cable([polar(deg, R - 0.55), polar(deg - 14, 2.0), SB]);
+    blockers.push([...polar(deg, R - 0.3), 0.85]);
+  });
+  // 중앙: 모니터 스피커 4대, 스테이지 박스, 멀티 케이블
+  for (const deg of [40, 130, 220, 310]) {
+    const w = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.4), M.tolex); b.rotation.x = -0.6; b.position.y = 0.2; b.castShadow = true; w.add(b);
+    const gr = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.27), M.grille); gr.position.z = 0.201; b.add(gr);
+    place(w, deg, 0.95); faceCenter(w, true); dyn.add(w); cable([polar(deg, 0.8), polar(deg + 35, 1.1), SB], 0.006);
+  }
+  blockers.push([C.X, C.Y, 1.3]);
+  const sb = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.22), M.blackMetal); sb.position.copy(P(SB[0], SB[1], CY + 0.06)); sb.castShadow = true; dyn.add(sb);
+  cable([SB, polar(199, 2.5), polar(199, 5.0), [8, 6.6], [5.2, 6.4]], 0.014);
+}
+
+/* ---------- audience ---------- */
+const VIEW_AUD = polar(-36, SHOW.audience.r0);
+const crowd = new THREE.Group(); dyn.add(crowd);
+const crowdSets = [];
+{
+  const A = SHOW.audience, spots = [], d = SHOW.standDist, d2 = HW - SHOW.standWallGap, reserved = [[C.X - d, C.Y], [C.X + d, C.Y], [C.X, C.Y - d2], [C.X, C.Y + d2]];
+  for (let r = A.r0; r <= A.r1; r += A.rowGap) {
+    const n = Math.floor(2 * Math.PI * r / A.pitch), off = rnd();
+    for (let k = 0; k < n; k++) {
+      const a = (k + off) / n * Math.PI * 2, dx = r * Math.cos(a), dy = r * Math.sin(a), X = C.X + dx, Y = C.Y + dy;
+      if (Math.abs(dx) < A.aisle / 2 || Math.abs(dy) < A.aisle / 2) continue;
+      if (X < S.depth + 1.3 || X > L - 0.8 || Y < 0.9 || Y > Wd - 0.9) continue;
+      if (X > X_.x0 - 0.7 && Y < X_.y1 + 0.7) continue;
+      if (Math.hypot(X - VIEW_AUD[0], Y - VIEW_AUD[1]) < 0.6 || Math.hypot(X - 28.8, Y - 10.5) < 3.2) continue;
+      if (reserved.some(([sx, sy]) => Math.hypot(X - sx, Y - sy) < 1.25)) continue;
+      if (rnd() < 0.1) continue;
+      spots.push({ x: X + (rnd() - 0.5) * 0.16, z: -(Y + (rnd() - 0.5) * 0.16), s: 0.89 + rnd() * 0.13, w: 0.9 + rnd() * 0.2, rot: 0, ph: rnd() * 6.3, v: (rnd() < 0.15 ? 2 : 0) + (rnd() < 0.45 ? 1 : 0) });
+    }
+  }
+  const tops = [0x1a1a1d, 0x25293a, 0xc4bfb3, 0x7a6f5c, 0x434a3e, 0x5f5f63, 0xa39478, 0x352a26, 0x1f2b40, 0xd2cfc8, 0x4f322d, 0x848c95, 0x111113, 0x2c2c30];
+  const bots = [0x151517, 0x1e222d, 0x33384a, 0x7b7263, 0x262629, 0x41444d], skins = [0xcba488, 0xc49a7c, 0xbd9272, 0xd0ac92], hairs = [0x100e0d, 0x18130f, 0x231a14, 0x33261b];
+  const pick = a => a[Math.floor(rnd() * a.length)], col = new THREE.Color();
+  const cm = { top: std({ roughness: 0.92 }), bottom: std({ roughness: 0.92 }), skin: std({ roughness: 0.7 }), hair: std({ roughness: 0.8 }), shoe: std({ color: 0x0f0f10, roughness: 0.6 }) };
+  for (let v = 0; v < 4; v++) {
+    const list = spots.filter(s => s.v === v); if (!list.length) continue;
+    const geos = bakePerson(makePerson({ longHair: !!(v & 1), arms: v & 2 ? [[2.6, 0.2, 0.3], [0.06, 0.07, 0.25]] : undefined }));
+    const meshes = {};
+    for (const k in geos) { const m = new THREE.InstancedMesh(geos[k], cm[k], list.length); m.castShadow = m.receiveShadow = true; m.frustumCulled = false; crowd.add(m); meshes[k] = m; }
+    list.forEach((s, i) => {
+      s.rot = Math.atan2(P(C.X, C.Y).x - s.x, P(C.X, C.Y).z - s.z) + (rnd() - 0.5) * 0.3;
+      meshes.top.setColorAt(i, col.setHex(pick(tops))); meshes.bottom.setColorAt(i, col.setHex(pick(bots))); meshes.skin.setColorAt(i, col.setHex(pick(skins))); meshes.hair.setColorAt(i, col.setHex(pick(hairs)));
+    });
+    crowdSets.push({ list, meshes: Object.values(meshes) });
+  }
+  window.__crowd = spots.length;
+}
+const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e4 = new THREE.Euler(0, 0, 0, 'YXZ'), v4 = new THREE.Vector3(), s4 = new THREE.Vector3();
+function updateCrowd(t) {
+  for (const { list, meshes } of crowdSets) {
+    list.forEach((s, i) => {
+      e4.set(Math.sin(t * 0.9 + s.ph) * 0.02, s.rot, Math.sin(t * 1.25 + s.ph * 2) * 0.03);
+      m4.compose(v4.set(s.x, 0, s.z), q4.setFromEuler(e4), s4.set(s.w * s.s, s.s, s.w * s.s));
+      for (const m of meshes) m.setMatrixAt(i, m4);
+    });
+    for (const m of meshes) m.instanceMatrix.needsUpdate = true;
+  }
+}
+updateCrowd(0);
+
+/* ---------- grid overlay ---------- */
+const gridGroup = new THREE.Group(); gridGroup.visible = false; scene.add(gridGroup);
+{
+  const pts = [];
+  VENUE.grid.forEach((gx, i) => { pts.push(P(gx, 0, 0.03), P(gx, Wd, 0.03)); const s = textSprite('X' + (i + 1)); s.position.copy(P(Math.min(Math.max(gx, 0.6), L - 0.6), 0.9, 0.5)); gridGroup.add(s); });
+  [[0, 'Y4'], [9, 'Y5'], [18, 'Y6']].forEach(([y, n]) => { pts.push(P(0, y, 0.03), P(L, y, 0.03)); const s = textSprite(n); s.position.copy(P(L + 1.4, y, 0.5)); gridGroup.add(s); });
+  gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xf2c14e, depthTest: false, transparent: true, fog: false })));
+}
+
+/* ---------- avatar ---------- */
+const av = makePerson({ top: 0x9a7b3a, bottom: 0x262a33, h: 1.72 });
+const avatar = av.g; scene.add(avatar); avatar.position.copy(P(26.9, 9.0));
+
+/* ---------- 실내 반사(환경맵) ---------- */
+buildStands();
+scene.traverse(o => { if (o.material && o.material.isMeshStandardMaterial) o.material.envMapIntensity = 0.2; });
+Object.values(M).forEach(m => { if (m.isMeshStandardMaterial) m.envMapIntensity = 0.2; });
+floorMat.envMapIntensity = 0.8;
+const cubeRT = new THREE.WebGLCubeRenderTarget(128);
+const cubeCam = new THREE.CubeCamera(0.1, 60, cubeRT); cubeCam.position.copy(P(C.X, C.Y, 2.4)); scene.add(cubeCam);
+const pmrem = new THREE.PMREMGenerator(renderer);
+let envRT = null;
+function bakeEnv() {
+  if (window.__noEnv) return;
+  const hid = [dyn, avatar, gridGroup, standGroup, ...standCones], was = hid.map(o => o.visible);
+  hid.forEach(o => o.visible = false);
+  const rv = roofGroup.visible, sv = sideGroup.south.visible, fg = scene.fog; roofGroup.visible = sideGroup.south.visible = true; scene.fog = null;
+  cubeCam.update(renderer, scene);
+  const rt = pmrem.fromCubemap(cubeRT.texture);
+  scene.environment = rt.texture; if (envRT) envRT.dispose(); envRT = rt;
+  hid.forEach((o, i) => o.visible = was[i]); roofGroup.visible = rv; sideGroup.south.visible = sv; scene.fog = fg;
+}
+
+/* ---------- 후보정: 빛 번짐 + 비네팅 + 필름 입자 ---------- */
+let usePost = !window.__noPost;
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.28, 0.55, 1.15); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const film = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform sampler2D tDiffuse; uniform float time; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float d = distance(vUv, vec2(0.5)); c.rgb *= mix(1.0, 0.62, smoothstep(0.28, 0.82, d)); float n = fract(sin(dot(vUv * vec2(917.0, 613.0) + fract(time) * 7.0, vec2(12.9898, 78.233))) * 43758.5453); c.rgb += (n - 0.5) * 0.035; gl_FragColor = c; }',
+});
+composer.addPass(film);
+
+/* ---------- controls ---------- */
+let mode = 'third', yaw = Math.PI, pitch = 0.25;
+const orbit = new OrbitControls(camera, canvas);
+orbit.enabled = false; orbit.maxPolarAngle = Math.PI * 0.49; orbit.minDistance = 4; orbit.maxDistance = 70; orbit.enableDamping = true;
+const keys = new Set();
+addEventListener('keydown', e => keys.add(e.key.toLowerCase())); addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+const joy = document.getElementById('joy'), knob = document.getElementById('knob');
+let joyId = null, jx = 0, jy = 0;
+function updJoy(e) {
+  const r = joy.getBoundingClientRect(); let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  const m = r.width / 2 - 12, d = Math.hypot(dx, dy); if (d > m) { dx *= m / d; dy *= m / d; }
+  jx = dx / m; jy = dy / m; knob.style.transform = `translate(${dx}px,${dy}px)`;
+}
+joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); updJoy(e); e.preventDefault(); });
+joy.addEventListener('pointermove', e => { if (e.pointerId === joyId) updJoy(e); });
+const endJoy = e => { if (e.pointerId === joyId) { joyId = null; jx = jy = 0; knob.style.transform = ''; } };
+joy.addEventListener('pointerup', endJoy); joy.addEventListener('pointercancel', endJoy);
+let lookId = null, lx = 0, ly = 0;
+canvas.addEventListener('pointerdown', e => { if (mode === 'orbit' || lookId !== null) return; lookId = e.pointerId; lx = e.clientX; ly = e.clientY; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if (e.pointerId !== lookId) return; yaw += (e.clientX - lx) * 0.006; pitch += (e.clientY - ly) * 0.004; lx = e.clientX; ly = e.clientY; clampPitch(); });
+const endLook = e => { if (e.pointerId === lookId) lookId = null; };
+canvas.addEventListener('pointerup', endLook); canvas.addEventListener('pointercancel', endLook);
+function clampPitch() { pitch = mode === 'first' ? Math.max(-0.9, Math.min(0.9, pitch)) : Math.max(-0.05, Math.min(1.25, pitch)); }
+
+/* ---------- views ---------- */
+const viewBtns = [...document.querySelectorAll('[data-view]')];
+const lookAtCenter = () => { yaw = Math.atan2(P(C.X, C.Y).z - avatar.position.z, P(C.X, C.Y).x - avatar.position.x); };
+function setView(v) {
+  viewBtns.forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  mode = v === 'walk' ? 'third' : v === 'orbit' ? 'orbit' : 'first';
+  if (v === 'entrance') avatar.position.copy(P(28.8, 10.5));
+  if (v === 'performer') avatar.position.copy(P(...polar(19, SHOW.ringR + 0.15)));
+  if (v === 'audience') avatar.position.copy(P(...VIEW_AUD));
+  if (v === 'walk' && Math.hypot(avatar.position.x - C.X, avatar.position.z + C.Y) < 5.5) avatar.position.copy(P(26.9, 9.0));
+  if (v !== 'first' && v !== 'orbit') lookAtCenter();
+  pitch = mode === 'third' ? 0.25 : v === 'performer' ? 0.1 : 0.03;
+  orbit.enabled = mode === 'orbit'; joy.style.display = mode === 'orbit' ? 'none' : '';
+  avatar.visible = mode !== 'first';
+  roofGroup.visible = sideGroup.south.visible = mode !== 'orbit';
+  if (mode === 'orbit') { const port = innerWidth < innerHeight; camera.position.set(C.X + 3, port ? 34 : 21, port ? 26 : 13); orbit.target.copy(P(C.X - (port ? 0 : 1), C.Y, 0.5)); orbit.update(); }
+  clampPitch();
+  document.getElementById('hint').innerHTML = mode === 'orbit' ? '드래그: 회전 · 두 손가락: 확대/이동' : '왼쪽 조이스틱: 이동 · 화면 드래그: 시점<br>PC: WASD / 방향키 + 마우스 드래그';
+}
+viewBtns.forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+/* ---------- lighting UI ---------- */
+const $ = id => document.getElementById(id);
+const sl = { high: $('sHigh'), col: $('sCol'), stand: $('sStand'), temp: $('sTemp') };
+let envTimer = 0;
+function setPreset(p) {
+  Object.assign(lightTgt, p === 'show' ? { high: 0, col: 0.5, stand: 1 } : { high: 1, col: 1, stand: 0 });
+  for (const k in sl) sl[k].value = lightTgt[k] * 100;
+  $('bShow').classList.toggle('on', p === 'show'); $('bRehearsal').classList.toggle('on', p !== 'show'); envDirty = true;
+}
+for (const k in sl) sl[k].addEventListener('input', () => { lightTgt[k] = sl[k].value / 100; if (k !== 'temp') { $('bShow').classList.remove('on'); $('bRehearsal').classList.remove('on'); } envDirty = true; });
+$('bShow').addEventListener('click', () => setPreset('show')); $('bRehearsal').addEventListener('click', () => setPreset('rehearsal'));
+$('bAxis').addEventListener('click', () => { SHOW.standAxis = SHOW.standAxis === 'EW' ? 'NS' : 'EW'; buildStands(); });
+const panels = { bLight: $('lightPanel'), bInfo: $('info') };
+for (const id in panels) $(id).addEventListener('click', () => { const open = panels[id].style.display === 'block'; for (const k in panels) panels[k].style.display = 'none'; panels[id].style.display = open ? 'none' : 'block'; });
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { for (const k in panels) panels[k].style.display = 'none'; }));
+$('bCrowd').addEventListener('click', () => { crowd.visible = !crowd.visible; $('bCrowd').classList.toggle('on', crowd.visible); });
+$('bGrid').addEventListener('click', () => { gridGroup.visible = !gridGroup.visible; $('bGrid').classList.toggle('on', gridGroup.visible); });
+
+/* ---------- movement ---------- */
+function blocked(x, z) {
+  const Y = -z;
+  if (x < E_.x1 + 0.3 && Y > E_.y0 - 0.3) return true;
+  if (x > X_.x0 - 0.3 && Y < X_.y1 + 0.3) return true;
+  for (const [bx, by, br] of blockers) if (Math.hypot(x - bx, Y - by) < br) return true;
+  for (const [bx, by, br] of standBlock) if (Math.hypot(x - bx, Y - by) < br) return true;
+  return false;
+}
+function groundAt(x, z) {
+  const Y = -z;
+  if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + 0.4) return S.h / 2; }
+  return Math.hypot(x - C.X, Y - C.Y) < SHOW.carpetR ? CY : 0;
+}
+const tmp = new THREE.Vector3();
+let walkPh = 0;
+function step(dt) {
+  let f = -jy, r = jx;
+  if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
+  if (keys.has('d') || keys.has('arrowright')) r += 1; if (keys.has('a') || keys.has('arrowleft')) r -= 1;
+  const mag = Math.min(1, Math.hypot(f, r)), dir = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw)), right = new THREE.Vector3(-dir.z, 0, dir.x);
+  const mv = dir.multiplyScalar(f).add(right.multiplyScalar(r));
+  let moving = 0;
+  if (mv.lengthSq() > 1e-4 && mode !== 'orbit') {
+    mv.normalize().multiplyScalar(1.9 * mag * dt);
+    const nx = Math.max(0.45, Math.min(L - 0.45, avatar.position.x + mv.x)), nz = Math.max(-Wd + 0.45, Math.min(-0.45, avatar.position.z + mv.z));
+    if (!blocked(nx, avatar.position.z)) avatar.position.x = nx;
+    if (!blocked(avatar.position.x, nz)) avatar.position.z = nz;
+    avatar.rotation.y = Math.atan2(mv.x, mv.z); moving = mag; walkPh += dt * 7.5 * mag;
+  }
+  const sw = Math.sin(walkPh) * 0.5 * moving;
+  [1, -1].forEach((s, i) => {
+    const lg = av.legs[i], ar = av.arms[i];
+    lg.hip.rotation.x += (s * sw - lg.hip.rotation.x) * 0.4; lg.knee.rotation.x += (Math.max(0, s * sw) * 1.1 - lg.knee.rotation.x) * 0.4;
+    ar.sh.rotation.x += (-0.06 - s * sw * 0.6 - ar.sh.rotation.x) * 0.4;
+  });
+  const gy = groundAt(avatar.position.x, avatar.position.z);
+  avatar.position.y += (gy - avatar.position.y) * Math.min(1, dt * 12);
+}
+function clampCam(v) {
+  v.x = Math.max(0.25, Math.min(L - 0.25, v.x)); v.z = Math.max(-Wd + 0.25, Math.min(-0.25, v.z));
+  v.y = Math.max(0.3, Math.min(roofAt(-v.z) - 0.7, v.y)); return v;
+}
+let bob = 0;
+function updateCamera(t) {
+  const dir = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));
+  if (mode === 'third') {
+    const dist = 3.2, head = avatar.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+    tmp.copy(head).addScaledVector(dir, -dist * Math.cos(pitch)).add(new THREE.Vector3(0, dist * Math.sin(pitch), 0));
+    camera.position.lerp(clampCam(tmp), 0.2); camera.lookAt(head);
+  } else if (mode === 'first') {       // 손으로 든 카메라처럼 아주 약한 흔들림
+    bob = Math.sin(walkPh * 2) * 0.012;
+    camera.position.copy(avatar.position).add(new THREE.Vector3(Math.sin(t * 0.7) * 0.006, 1.6 + bob + Math.sin(t * 1.1) * 0.004, 0));
+    tmp.copy(camera.position).addScaledVector(dir, Math.cos(pitch)).add(new THREE.Vector3(0, -Math.sin(pitch), 0)); camera.lookAt(tmp);
+  } else orbit.update();
+}
+
+/* ---------- loop ---------- */
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = w < h ? 64 : 52; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+setPreset('show'); sl.temp.value = light.temp * 100; Object.assign(light, lightTgt); applyLights(); drawScreen(0.3);
+setView('walk'); camera.position.copy(avatar.position).add(new THREE.Vector3(2.6, 2.2, 0));
+bakeEnv(); bakeEnv(); envDirty = false;
+const clock = new THREE.Clock();
+let frame = 0, slowAcc = 0, slowN = 0, degraded = !!window.__noAuto, lastDim = -1;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  step(dt); updateCamera(t);
+  let diff = 0;
+  for (const k in light) { light[k] += (lightTgt[k] - light[k]) * Math.min(1, dt * 3.5); diff = Math.max(diff, Math.abs(lightTgt[k] - light[k])); }
+  applyLights();
+  if (envDirty && diff < 0.02) { envTimer += dt; if (envTimer > 0.3) { bakeEnv(); envDirty = false; envTimer = 0; } } else envTimer = 0;
+  if (crowd.visible && frame % 2 === 0) updateCrowd(t);
+  performers.forEach(p => { p.g.rotation.z = Math.sin(t * 1.1 + p.ph) * 0.025; if (!p.seated) p.g.rotation.x = Math.sin(t * 0.8 + p.ph) * 0.012; });
+  const dim = Math.round((0.3 + 0.7 * light.high) * 20) / 20; if (dim !== lastDim) { drawScreen(dim); lastDim = dim; }
+  if (usePost) { film.uniforms.time.value = t; composer.render(dt); } else renderer.render(scene, camera);
+  frame++;
+  // 느린 기기 자동 대응: 후보정·그림자·해상도 낮추기
+  if (!degraded && frame > 20 && frame <= 110) { slowAcc += dt; slowN++; if (frame === 110 && slowAcc / slowN > 0.036) { degraded = true; usePost = false; shadowsOn = false; renderer.setPixelRatio(1); resize(); standSpots.forEach(sp => sp.castShadow = false); key.shadow.mapSize.set(1024, 1024); if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; } } }
+});
+window.__dbg = { avatar, look: (y, p) => { yaw = y; pitch = p; } };
+document.getElementById('loading').remove();
+</script>
+</body>
+</html>
