@@ -5,7 +5,7 @@
 
 사용자: 비개발자에 가까운 공연 기획자(찬양 콘서트 팀 대표). **한국어로, 초보자도 이해하게 설명**. 구조/이유를 먼저 설명하는 걸 선호하고, 수정 시 **부분 코드가 아니라 통째로 교체 가능한 완성 파일**을 선호.
 
-## 현재 상태 (v0.8, 2026-11-12)
+## 현재 상태 (v0.9, 2026-11-13)
 - `index.html` 한 파일에 전부 들어 있음 (Three.js r160, jsdelivr CDN importmap). 빌드 도구 없음.
 - `tex/` 사진 질감 (CC0, 현장 색에 맞춰 보정): floor(ambientCG WoodFloor051 + normal/roughness), panel·perf·slat(Poly Haven oak_veneer_01), wain(Poly Haven plywood), carpet(ambientCG Carpet012 + normal).
   - 질감은 `photo()`로 비동기 로드, 실패해도 기본 색으로 렌더됨.
@@ -15,6 +15,10 @@
   - 이유: 클라우드 세션의 Claude GitHub 앱 권한이 이 저장소에 없었음. Claude Code(로컬)에서는 사용자 git 자격으로 바로 push 가능.
   - 해야 할 것: `git remote add origin https://github.com/choiwk/worship-venue-3d.git && git push -u origin main` → 저장소 Settings → Pages → Branch `main` / `/(root)` → `https://choiwk.github.io/worship-venue-3d/`
   - `reference/`는 .gitignore에 있음(현장 사진·도면·원본 프롬프트, 공개 저장소에 안 올리려고). 올릴지 사용자에게 확인할 것. `data/venue_3F_plan.json`에는 공사명(주소 포함)이 있어 공개 여부도 사용자 확인 권장.
+
+- **v0.9 변경**: 상단 버튼을 걷기·공연자 시점·관객 시점·전체 보기·1인칭·관객만 남김(조명/그리드/정보 버튼은 `<div hidden>`에 남겨 코드 참조만 유지, 기본 조명은 공연 프리셋). 회중 100명. 입장 화면에서 이름 입력 → 머리 위 이름표(`nameTag`).
+- **멀티 접속(최대 40명)**: `vendor/trystero.min.js`(Trystero 0.27, esbuild 번들, 기본 Nostr 릴레이 신호 + WebRTC P2P). `connect()`에서 `joinRoom({appId, maxUsers: 40}, 'hall-3f')`, `makeUserState('p', {n,x,z,r,m})`를 0.12초마다 갱신. 다른 사용자는 `upsertOther/tickOthers`. **실제 두 기기 간 연결은 미검증**(작업 환경에서 외부 WebSocket 차단). 학교·회사 와이파이처럼 P2P가 막힌 망에서는 안 보일 수 있음(TURN 서버 필요). 안정성이 필요하면 Supabase/Firebase 신호 방식으로 교체 검토.
+- 로딩 개선: three min 빌드, 질감 축소(tex 합계 약 0.4MB), 그림자맵 1024, 환경맵 1회 베이크.
 
 ## 좌표계 / 코드 구조 (index.html)
 - `P(X, Y, h)` = 도면 좌표(m) → three: `x = X, y = h, z = -Y`.
