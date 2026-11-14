@@ -85,3 +85,7 @@
 - 벽·기둥: Poly Haven — oak_veneer_01
 - 벽 하부: Poly Haven — plywood
 - 러그 무늬: 직접 그린 페르시아풍 패턴
+
+## 글씨체
+
+- 나눔손글씨 사랑해 아들 (NAVER, SIL Open Font License)
