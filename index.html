@@ -28,12 +28,13 @@
     border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 12px;cursor:pointer;
     -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
   button.on{background:#e9e4da;color:#191613;border-color:#e9e4da;font-weight:600}
-  #joy{position:fixed;left:22px;bottom:26px;width:124px;height:124px;border-radius:50%;
+  #joy{position:fixed;right:22px;bottom:26px;width:124px;height:124px;border-radius:50%;
     background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.22);z-index:5;touch-action:none}
   #knob{position:absolute;left:37px;top:37px;width:50px;height:50px;border-radius:50%;
     background:rgba(255,255,255,.34);pointer-events:none}
-  #hint{position:fixed;right:12px;bottom:14px;font-size:12px;color:rgba(255,255,255,.55);
-    text-align:right;z-index:4;line-height:1.5;pointer-events:none}
+  #jump{position:fixed;left:26px;bottom:44px;width:76px;height:76px;border-radius:50%;padding:0;font-size:14px;z-index:5;touch-action:none}
+  #hint{position:fixed;left:0;right:0;bottom:6px;font-size:12px;color:rgba(255,255,255,.55);
+    text-align:center;z-index:4;line-height:1.5;pointer-events:none}
   .panel{position:fixed;left:10px;right:10px;top:92px;max-width:430px;margin:0 auto;z-index:6;
     background:rgba(14,13,12,.94);border:1px solid rgba(255,255,255,.16);border-radius:14px;
     padding:14px 16px;font-size:13px;line-height:1.6;display:none;max-height:68vh;overflow:auto;touch-action:pan-y}
@@ -69,9 +70,9 @@
 </div></div>
 <div class="bar" id="views">
   <button data-view="walk" class="on">걷기</button>
+  <button data-view="orbit">전체 보기</button>
   <button data-view="performer">공연자 시점</button>
   <button data-view="audience">관객 시점</button>
-  <button data-view="orbit">전체 보기</button>
   <button data-view="first">1인칭</button>
   <button id="bCrowd" class="on">관객</button>
 </div>
@@ -80,7 +81,8 @@
   <button id="bShow" class="on"></button><button id="bRehearsal"></button><button id="bLight"></button><button id="bGrid"></button><button id="bInfo"></button>
 </div>
 <div id="joy"><div id="knob"></div></div>
-<div id="hint">왼쪽 조이스틱: 이동 · 화면 드래그: 시점<br>PC: WASD / 방향키 + 마우스 드래그</div>
+<button id="jump">점프</button>
+<div id="hint">오른쪽 조이스틱: 이동 · 화면 드래그: 시점 · PC: WASD + 스페이스(점프)</div>
 
 <div class="panel" id="lightPanel">
   <h2>조명 조절</h2>
@@ -92,7 +94,7 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.12 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.13 — 중앙 원형 무대</h2>
   <table>
     <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
@@ -451,7 +453,7 @@ box(0.06, 2.1, 1.0, M.white, E_.x1 + 0.03, 0.6 + 1.05, -(E_.y0 + 1.0));
 for (let k = 0; k < 4; k++) box(0.35, 0.15 * (k + 1), 1.2, M.stageFace, E_.x1 + 1.4 - k * 0.35, 0.075 * (k + 1), -(E_.y0 + 1.0), { recv: true });
 box(X_.x1 - X_.x0, X_.h, X_.y1 - X_.y0, M.boxWood, (X_.x0 + X_.x1) / 2, X_.h / 2, -(X_.y0 + X_.y1) / 2, { cast: true, recv: true });
 box(0.05, 2.1, 0.95, M.white, X_.x0 - 0.02, 1.05, -4.0);
-for (const z of [-0.6, -Wd + 0.6]) box(0.42, 0.7, 0.42, M.tolex, 4.6, 3.6, z);
+for (const z of [-0.75, -Wd + 0.75]) { box(0.62, 1.1, 0.58, M.tolex, 4.6, 3.5, z); const gr = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 1.0), M.grille); gr.rotation.y = Math.PI / 2; gr.position.set(4.912, 3.5, z); arch.add(gr); }   // 메인 스피커
 
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360;
 const scrG = scrC.getContext('2d'), scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace;
@@ -924,12 +926,12 @@ function setView(v) {
   if (v === 'walk' && Math.hypot(avatar.position.x - C.X, avatar.position.z + C.Y) < 4.6) avatar.position.copy(P(26.9, 9.0));
   if (v !== 'first' && v !== 'orbit') lookAtCenter();
   pitch = mode === 'third' ? 0.25 : v === 'performer' ? 0.1 : 0.03;
-  orbit.enabled = mode === 'orbit'; joy.style.display = mode === 'orbit' ? 'none' : '';
+  orbit.enabled = mode === 'orbit'; joy.style.display = document.getElementById('jump').style.display = mode === 'orbit' ? 'none' : '';
   avatar.visible = mode !== 'first';
   roofGroup.visible = sideGroup.south.visible = mode !== 'orbit';
   if (mode === 'orbit') { const port = innerWidth < innerHeight; camera.position.set(C.X + 3, port ? 34 : 21, port ? 26 : 13); orbit.target.copy(P(C.X - (port ? 0 : 1), C.Y, 0.5)); orbit.update(); }
   clampPitch();
-  document.getElementById('hint').innerHTML = mode === 'orbit' ? '드래그: 회전 · 두 손가락: 확대/이동' : '왼쪽 조이스틱: 이동 · 화면 드래그: 시점<br>PC: WASD / 방향키 + 마우스 드래그';
+  document.getElementById('hint').innerHTML = mode === 'orbit' ? '드래그: 회전 · 두 손가락: 확대/이동' : '오른쪽 조이스틱: 이동 · 화면 드래그: 시점 · PC: WASD + 스페이스(점프)';
 }
 viewBtns.forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
 
@@ -966,7 +968,10 @@ function groundAt(x, z) {
   return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d * 1.5 ? CY : 0;
 }
 const tmp = new THREE.Vector3();
-let walkPh = 0;
+let walkPh = 0, baseY = 0, jumpH = 0, jumpV = 0;
+function doJump() { if (mode !== 'orbit' && jumpH === 0) jumpV = 4.6; }   // 약 0.75m 뜀
+document.getElementById('jump').addEventListener('pointerdown', e => { e.preventDefault(); doJump(); });
+addEventListener('keydown', e => { if (e.code === 'Space' && e.target.tagName !== 'INPUT') { e.preventDefault(); doJump(); } });
 function step(dt) {
   let f = -jy, r = jx;
   if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
@@ -988,7 +993,9 @@ function step(dt) {
     ar.sh.rotation.x += (-0.06 - s * sw * 0.6 - ar.sh.rotation.x) * 0.4;
   });
   const gy = groundAt(avatar.position.x, avatar.position.z);
-  avatar.position.y += (gy - avatar.position.y) * Math.min(1, dt * 12);
+  baseY += (gy - baseY) * Math.min(1, dt * 12);
+  if (jumpH > 0 || jumpV > 0) { jumpV -= 14 * dt; jumpH += jumpV * dt; if (jumpH <= 0) { jumpH = 0; jumpV = 0; } }
+  avatar.position.y = baseY + jumpH;
   return moving;
 }
 function clampCam(v) {
@@ -1055,14 +1062,14 @@ function upsertOther(id, st) {
     p.g.traverse(m => { if (m.material && m.material.isMeshStandardMaterial) m.material.envMapIntensity = 0.2; });
     o = { p, tag: null, name: '', x: st.x, z: st.z, r: st.r, m: 0, ph: 0 }; others.set(id, o); showCount();
   }
-  o.x = st.x; o.z = st.z; o.r = st.r; o.m = st.m;
+  o.x = st.x; o.z = st.z; o.r = st.r; o.m = st.m; o.j = st.j || 0;
   if (st.n !== o.name) { o.name = st.n; o.tag = setTag(o.p.g, o.tag, st.n); }
 }
 function dropOther(id) { const o = others.get(id); if (!o) return; scene.remove(o.p.g); o.p.g.traverse(m => { if (m.material && m.material.dispose && m.isSprite) m.material.dispose(); }); others.delete(id); showCount(); }
 function tickOthers(dt) {
   for (const o of others.values()) {
     const g = o.p.g, k = Math.min(1, dt * 8);
-    g.position.x += (o.x - g.position.x) * k; g.position.z += (o.z - g.position.z) * k; g.position.y = groundAt(g.position.x, g.position.z);
+    g.position.x += (o.x - g.position.x) * k; g.position.z += (o.z - g.position.z) * k; o.jy = (o.jy || 0) + ((o.j || 0) - (o.jy || 0)) * Math.min(1, dt * 18); g.position.y = groundAt(g.position.x, g.position.z) + o.jy;
     let d = o.r - g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); g.rotation.y += d * k;
     o.ph += dt * 7.5 * o.m; const sw = Math.sin(o.ph) * 0.5 * o.m;
     [1, -1].forEach((s, i) => { o.p.legs[i].hip.rotation.x = s * sw; o.p.legs[i].knee.rotation.x = Math.max(0, s * sw) * 1.1; o.p.arms[i].sh.rotation.x = -0.06 - s * sw * 0.6; });
@@ -1082,8 +1089,8 @@ async function connect() {
   } catch (e) { console.warn('multiplayer off', e); showCount('혼자 둘러보기 (연결 실패)'); }
 }
 function tickNet(dt, moving) {
-  netMoving = moving; netTimer += dt; if (!netState || netTimer < 0.12) return; netTimer = 0;
-  const st = { n: myName, x: +avatar.position.x.toFixed(2), z: +avatar.position.z.toFixed(2), r: +avatar.rotation.y.toFixed(2), m: moving > 0.1 ? 1 : 0 }, key = JSON.stringify(st);
+  netMoving = moving; netTimer += dt; if (!netState || netTimer < (jumpH > 0 ? 0.05 : 0.12)) return; netTimer = 0;
+  const st = { n: myName, x: +avatar.position.x.toFixed(2), z: +avatar.position.z.toFixed(2), r: +avatar.rotation.y.toFixed(2), m: moving > 0.1 ? 1 : 0, j: +jumpH.toFixed(2) }, key = JSON.stringify(st);
   if (key !== lastSent) { lastSent = key; try { netState.set(st); } catch (e) {} }
 }
 // 입장 화면
