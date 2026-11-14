@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>3D 공연장 v0.9 — 다목적실 (중앙 원형 무대)</title>
+<title>3D 공연장 v0.10 — 다목적실 (중앙 원형 무대)</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#060505;color:#eee;
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -38,6 +38,11 @@
   .card{width:min(320px,84vw);text-align:center}.card h1{font-size:20px;margin:0 0 4px}.card p{margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.6)}
   .card input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;text-align:center;margin-bottom:10px;outline:none;-webkit-user-select:text;user-select:text}
   .card button{width:100%;padding:12px;border-radius:12px;font-size:15px}.card button:not(:disabled){background:#e9e4da;color:#191613;font-weight:600}
+  #pbar{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin:4px 0 8px}
+  #pfill{display:block;height:100%;width:3%;background:#e9b46a;border-radius:3px;transition:width .45s ease;animation:creep 12s ease-out forwards}
+  @keyframes creep{to{width:24%}}
+  #ptext{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:14px;min-height:16px}
+  .card button:disabled{opacity:.35}
   #who{position:fixed;right:12px;top:52px;font-size:12px;color:rgba(255,255,255,.7);z-index:5;pointer-events:none;text-align:right}
 </style>
 </head>
@@ -47,7 +52,9 @@
   <h1>우리가 서로 사랑하자</h1>
   <p>3층 다목적실 · 원형 찬양 집회 미리보기</p>
   <input id="nameIn" maxlength="12" placeholder="이름 (머리 위에 표시돼요)" autocomplete="off">
-  <button id="enter" disabled>공연장을 짓는 중…</button>
+  <div id="pbar"><i id="pfill"></i></div>
+  <div id="ptext">3D 엔진을 내려받는 중…</div>
+  <button id="enter" disabled>입장하기</button>
 </div></div>
 <div class="bar" id="views">
   <button data-view="walk" class="on">걷기</button>
@@ -74,7 +81,7 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.9 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.10 — 중앙 원형 무대</h2>
   <table>
     <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
@@ -110,6 +117,13 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+/* ---------- 로딩 진행 표시 ---------- */
+const pfill = document.getElementById('pfill'), ptext = document.getElementById('ptext');
+function setBar(p, t) { pfill.style.animation = 'none'; pfill.style.width = p + '%'; if (t) ptext.textContent = t + ' ' + Math.round(p) + '%'; }
+const loadStep = (p, t) => { setBar(p, t); return new Promise(r => { let done = false; const go = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 80); }); };
+let texTotal = 0, texDone = 0;
+await loadStep(28, '공연장 뼈대를 세우는 중…');
 
 /* =========================================================
    VENUE — 건물 (단위 m). 실측값이 생기면 여기만 바꾸세요.
@@ -189,12 +203,14 @@ let envDirty = true;
 const loader = new THREE.TextureLoader();
 // 사진 텍스처: 불러오기에 성공했을 때만 적용 (실패하면 기본 색 유지)
 function photo(mat, slot, file, rx, ry, opt = {}) {
+  texTotal++;
   loader.load('tex/' + file, t => {
+    texDone++;
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8;
     if (slot === 'map') { t.colorSpace = THREE.SRGBColorSpace; mat.color.set(opt.tint ?? 0xffffff); }
     if (slot === 'roughnessMap') mat.roughness = opt.roughness ?? 1;
     mat[slot] = t; mat.needsUpdate = true; envDirty = true;
-  }, undefined, () => {});
+  }, undefined, () => { texDone++; });
 }
 const tBlind = mkTex(256, 512, (g, w, h) => {
   g.fillStyle = '#a98a5e'; g.fillRect(0, 0, w, h);
@@ -444,6 +460,8 @@ function drawScreen(dim) {
   screenMat.color.setScalar(dim); scrT.needsUpdate = true;
 }
 
+await loadStep(42, '조명을 다는 중…');
+
 /* =========================================================
    LIGHTING — 천장등 / 벽(기둥) 조명 / 양쪽 스탠드 조명
    ========================================================= */
@@ -515,6 +533,8 @@ function applyLights() {
   standCones.forEach(c => { c.material.color.copy(lc); c.material.opacity = 0.013 * stand * (1 - 0.6 * high); });
   renderer.toneMappingExposure = 1.0 + 0.15 * (1 - high);
 }
+
+await loadStep(50, '찬양팀이 자리 잡는 중…');
 
 /* =========================================================
    PEOPLE — 사람 형태 (관절별 지오메트리)
@@ -724,6 +744,8 @@ const performers = [];
   cable([SB, polar(199, 2.5), polar(199, 5.0), [8, 6.6], [5.2, 6.4]], 0.014);
 }
 
+await loadStep(60, '회중이 모이는 중…');
+
 /* ---------- audience ---------- */
 const VIEW_AUD = [C.X + SHOW.audience.a0 * Math.cos(-0.63), C.Y + SHOW.audience.b0 * Math.sin(-0.63)];
 const crowd = new THREE.Group(); dyn.add(crowd);
@@ -788,16 +810,18 @@ const gridGroup = new THREE.Group(); gridGroup.visible = false; scene.add(gridGr
 const av = makePerson({ top: 0x9a7b3a, bottom: 0x262a33, h: 1.72 });
 const avatar = av.g; scene.add(avatar); avatar.position.copy(P(26.9, 9.0));
 
+await loadStep(68, '마무리 장식 중…');
+
 /* ---------- 이름표 ---------- */
-function nameTag(text) {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
-  const g = c.getContext('2d'); g.font = '600 60px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-  const w = Math.min(492, g.measureText(text).width + 56), x = (512 - w) / 2;
-  g.fillStyle = 'rgba(12,11,10,0.72)'; g.beginPath(); g.roundRect ? g.roundRect(x, 18, w, 92, 46) : g.rect(x, 18, w, 92); g.fill();
-  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 256, 66, 470);
+function nameTag(text) {      // 배경 없이 흰 글씨 + 얇은 어두운 테두리
+  const c = document.createElement('canvas'); c.width = 384; c.height = 96;
+  const g = c.getContext('2d'); g.font = '500 54px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  g.lineWidth = 7; g.strokeStyle = 'rgba(0,0,0,0.75)'; g.strokeText(text, 192, 50, 370);
+  g.fillStyle = '#fff'; g.fillText(text, 192, 50, 370);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false }));
-  s.scale.set(1.1, 0.275, 1); s.position.y = 2.0; return s;
+  s.scale.set(0.72, 0.18, 1); s.position.y = 1.93; return s;
 }
 function setTag(group, old, text) { if (old) { group.remove(old); old.material.map.dispose(); old.material.dispose(); } if (!text) return null; const s = nameTag(text); group.add(s); return s; }
 let myName = '', myTag = null;
@@ -964,6 +988,9 @@ function resize() {
 addEventListener('resize', resize); resize();
 setPreset('show'); sl.temp.value = light.temp * 100; Object.assign(light, lightTgt); applyLights(); drawScreen(0.3);
 setView('walk'); camera.position.copy(avatar.position).add(new THREE.Vector3(2.6, 2.2, 0));
+await loadStep(74, '빛과 재질을 준비하는 중…');
+try { await renderer.compileAsync(scene, camera); } catch (e) {}
+await loadStep(86, '반사를 계산하는 중…');
 bakeEnv(); envDirty = true;
 const clock = new THREE.Clock();
 let frame = 0, slowAcc = 0, slowN = 0, degraded = !!window.__noAuto, lastDim = -1;
@@ -1034,7 +1061,11 @@ function tickNet(dt, moving) {
 {
   const inp = document.getElementById('nameIn'), btn = document.getElementById('enter'), ov = document.getElementById('loading');
   try { inp.value = localStorage.getItem('venue-name') || ''; } catch (e) {}
-  btn.disabled = false; btn.textContent = '입장하기';
+  (async () => {       // 질감 사진이 다 올 때까지(최대 8초) 기다렸다가 입장 버튼을 켬
+    const t0 = performance.now();
+    while (texDone < texTotal && performance.now() - t0 < 8000) { setBar(88 + 11 * texDone / Math.max(1, texTotal), '질감을 입히는 중…'); await new Promise(r => setTimeout(r, 120)); }
+    setBar(100); ptext.textContent = '준비 완료'; btn.disabled = false;
+  })();
   const go = () => {
     myName = inp.value.trim().slice(0, 12) || '손님';
     try { localStorage.setItem('venue-name', myName); } catch (e) {}
