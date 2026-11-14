@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>3D 공연장 v0.11 — 다목적실 (중앙 원형 무대)</title>
+<title>3D 공연장 v0.12 — 다목적실 (중앙 원형 무대)</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#060505;color:#eee;
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -81,7 +81,7 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.11 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.12 — 중앙 원형 무대</h2>
   <table>
     <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
@@ -140,14 +140,15 @@ const VENUE = {
 };
 /* SHOW — 이번 공연 구성 */
 const SHOW = {
-  center: { X: 9.3, Y: 9.0 },      // 기존 무대(언덕) 바로 아래. 케이블 길이 때문에 홀 정중앙이 아님
+  center: { X: 10.8, Y: 9.0 },      // 기존 무대(언덕) 바로 아래. 케이블 길이 때문에 홀 정중앙이 아님
   right: 1,                         // 무대를 바라볼 때 오른쪽 = 북쪽(+1). 반대면 -1 (일렉·베이스·믹서 쪽)
   rug: { w: 2.4, d: 1.6 },          // 페르시아 러그 한 장(m). 가로 2장 × 세로 3장 = 6장, 4.8 × 4.8m
   ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
   ellipse: { a: 3.4, b: 3.4 },      // 찬양팀이 서는 원: 반지름 3.4m
   underlay: [7.4, 7.4],             // 러그 아래 어두운 바닥 천(m)
   slots: { drums: 3.0, keys: 2.2, inst: 1.6 },   // 자리 폭(m), 나머지는 보컬 7명이 균등 분할
-  audience: { count: 100, a0: 5.3, b0: 5.3, depth: 16, rowGap: 1.1, pitch: 0.95, aisle: 1.5 },   // 1인당 약 1㎡(서서 예배하는 여유 간격), 가까운 줄부터 195명   // 회중 첫 줄 타원(반축)과 줄 깊이
+  audience: { count: 100, back: 60,     // 둘러선 100명 + 뒤쪽(무대 반대편)에 60명 더
+               a0: 5.3, b0: 5.3, depth: 16, rowGap: 1.1, pitch: 0.95, aisle: 1.5 },   // 1인당 약 1㎡(서서 예배하는 여유 간격), 가까운 줄부터 195명   // 회중 첫 줄 타원(반축)과 줄 깊이
   standDist: 5.35, standWallGap: 1.3, standHeight: 7.0, standAxis: 'NS',   // NS = 좌·우 측벽 앞
 };
 const L = VENUE.length, Wd = VENUE.width, HW = Wd / 2, C = SHOW.center;
@@ -439,7 +440,6 @@ box(0.06, 2.1, 1.0, M.white, E_.x1 + 0.03, 0.6 + 1.05, -(E_.y0 + 1.0));
 for (let k = 0; k < 4; k++) box(0.35, 0.15 * (k + 1), 1.2, M.stageFace, E_.x1 + 1.4 - k * 0.35, 0.075 * (k + 1), -(E_.y0 + 1.0), { recv: true });
 box(X_.x1 - X_.x0, X_.h, X_.y1 - X_.y0, M.boxWood, (X_.x0 + X_.x1) / 2, X_.h / 2, -(X_.y0 + X_.y1) / 2, { cast: true, recv: true });
 box(0.05, 2.1, 0.95, M.white, X_.x0 - 0.02, 1.05, -4.0);
-box(0.6, 1.1, 0.7, M.white, 2.2, S.h + 0.55, -HW, { cast: true });
 for (const z of [-0.6, -Wd + 0.6]) box(0.42, 0.7, 0.42, M.tolex, 4.6, 3.6, z);
 
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360;
@@ -769,14 +769,15 @@ const crowd = new THREE.Group(); dyn.add(crowd);
 const crowdSets = [];
 {
   const A = SHOW.audience, spots = [], d = SHOW.standDist, d2 = HW - SHOW.standWallGap, reserved = [[C.X - d, C.Y], [C.X + d, C.Y], [C.X, C.Y - d2], [C.X, C.Y + d2]];
-  for (let gap = 0; gap <= A.depth && spots.length < A.count; gap += A.rowGap) {
+  for (let gap = 0; gap <= A.depth && spots.length < A.count + A.back; gap += A.rowGap) {
     const ra = A.a0 + gap, rb = A.b0 + gap, n = Math.floor(2 * Math.PI * Math.sqrt((ra * ra + rb * rb) / 2) / A.pitch), off = rnd();
-    for (let k = 0; k < n && spots.length < A.count; k++) {
+    for (let k = 0; k < n && spots.length < A.count + A.back; k++) {
       const a = (k + off) / n * Math.PI * 2, dx = ra * Math.cos(a), dy = rb * Math.sin(a), X = C.X + dx, Y = C.Y + dy;
+      if (spots.length >= A.count && dx < 1.5) continue;                  // 추가 인원은 뒤쪽에만
       if (Math.abs(dx) < A.aisle / 2 || Math.abs(dy) < A.aisle / 2) continue;
       if (X < 0.8 || X > L - 0.8 || Y < 0.9 || Y > Wd - 0.9) continue;
       if (X > S.depth - 0.4 && X < S.depth + 0.9) continue;               // 무대 턱
-      if (X < S.depth && (Y < S.zFrom + 0.4 || Y > S.zTo - 0.4 || Math.hypot(X - 2.2, Y - HW) < 1.0)) continue;
+      if (X < S.depth && (Y < S.zFrom + 0.4 || Y > S.zTo - 0.4)) continue;
       if (X > X_.x0 - 0.7 && Y < X_.y1 + 0.7) continue;
       if (Math.hypot(X - VIEW_AUD[0], Y - VIEW_AUD[1]) < 0.6 || Math.hypot(X - 28.8, Y - 10.5) < 3.2) continue;
       if (reserved.some(([sx, sy]) => Math.hypot(X - sx, Y - sy) < 1.25) || soundBlock.some(([sx, sy, sr]) => Math.hypot(X - sx, Y - sy) < sr)) continue;
