@@ -461,17 +461,39 @@ box(X_.x1 - X_.x0, X_.h, X_.y1 - X_.y0, M.boxWood, (X_.x0 + X_.x1) / 2, X_.h / 2
 box(0.05, 2.1, 0.95, M.white, X_.x0 - 0.02, 1.05, -4.0);
 for (const z of [-0.75, -Wd + 0.75]) { box(0.62, 1.1, 0.58, M.tolex, S.depth + S.step - 0.15, 3.5, z); const gr = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 1.0), M.grille); gr.rotation.y = Math.PI / 2; gr.position.set(S.depth + S.step + 0.162, 3.5, z); arch.add(gr); }   // 메인 스피커
 
-const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360;
-const scrG = scrC.getContext('2d'), scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace;
+/* LED 화면: PPT 가사 자막. 검은 바탕 + 흰 글씨, 글씨만 빛난다 */
+const LYRICS = ['오라 우리가 서로 사랑하자', '우리가 주를 찬양하자'];
+const scrC = document.createElement('canvas'); scrC.width = 1280; scrC.height = 720;
+const scrG = scrC.getContext('2d'), scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace; scrT.anisotropy = 8;
 const screenMat = new THREE.MeshBasicMaterial({ map: scrT });
+screenMat.color.setScalar(1.6);      // 흰 글씨가 블룸 문턱(1.15)을 넘어 은은히 번지게. 검은 바탕은 0 이라 그대로 검다
 const screen = new THREE.Mesh(new THREE.PlaneGeometry(VENUE.screen.w, VENUE.screen.h), screenMat);
-screen.rotation.y = Math.PI / 2; screen.position.set(0.06, VENUE.screen.bottom + VENUE.screen.h / 2, -HW); arch.add(screen);
+screen.rotation.y = Math.PI / 2; screen.position.set(0.08, VENUE.screen.bottom + VENUE.screen.h / 2, -HW); arch.add(screen);
 box(0.08, VENUE.screen.h + 0.12, VENUE.screen.w + 0.12, M.black, 0.03, screen.position.y, -HW);
-function drawScreen(dim) {
-  const g = scrG, w = 640, h = 360, grd = g.createLinearGradient(0, 0, w, h);
-  grd.addColorStop(0, '#0e1420'); grd.addColorStop(1, '#1d1a22'); g.fillStyle = grd; g.fillRect(0, 0, w, h);
-  g.fillStyle = '#e9e6df'; g.textAlign = 'center'; g.font = '34px sans-serif'; g.fillText('함께 찬양해요', w / 2, h / 2 + 10);
-  screenMat.color.setScalar(dim); scrT.needsUpdate = true;
+// 화면이 내는 빛: 글씨가 밝을수록 앞 벽·무대에 차가운 흰빛이 살짝 번진다 (글씨 면적이 작아 약하게)
+const scrLight = new THREE.PointLight(0xe6ecff, 0, 8, 2); scrLight.position.set(0.8, screen.position.y - 0.3, -HW); scene.add(scrLight);
+function drawScreen(a1, a2) {
+  const g = scrG, w = 1280, h = 720;
+  g.globalAlpha = 1; g.shadowBlur = 0; g.fillStyle = '#050506'; g.fillRect(0, 0, w, h);   // LED 의 검정은 완전한 0 이 아니다
+  g.strokeStyle = 'rgba(255,255,255,0.03)'; g.lineWidth = 1;                             // LED 캐비닛 이음매(약 0.5m 칸)
+  for (let k = 1; k < 8; k++) { g.beginPath(); g.moveTo(k * w / 8, 0); g.lineTo(k * w / 8, h); g.stroke(); }
+  for (let k = 1; k < 5; k++) { g.beginPath(); g.moveTo(0, k * h / 5); g.lineTo(w, k * h / 5); g.stroke(); }
+  g.font = 'bold 78px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  [[LYRICS[0], a1, h / 2 - 60], [LYRICS[1], a2, h / 2 + 60]].forEach(([txt, a, y]) => {
+    if (a <= 0) return;
+    g.globalAlpha = a; g.fillStyle = '#fff';
+    g.shadowColor = 'rgba(255,255,255,0.6)'; g.shadowBlur = 26; g.fillText(txt, w / 2, y);   // 밝은 글씨 둘레의 번짐
+    g.shadowBlur = 0; g.fillText(txt, w / 2, y);
+  });
+  g.globalAlpha = 1; scrT.needsUpdate = true;
+  scrLight.intensity = 3.5 * (a1 + a2);
+}
+// PPT 처럼: 첫 줄 → 둘째 줄이 차례로 페이드 인, 머문 뒤 함께 페이드 아웃, 잠깐 검은 화면 (12초 반복)
+let lyA1 = -1, lyA2 = -1;
+function tickLyrics(t) {
+  const lt = t % 12, ramp = (a, b) => Math.min(1, Math.max(0, (lt - a) / (b - a))), out = 1 - ramp(9, 10);
+  const a1 = Math.round(ramp(0.5, 1.5) * out * 20) / 20, a2 = Math.round(ramp(2.2, 3.2) * out * 20) / 20;
+  if (a1 !== lyA1 || a2 !== lyA2) { drawScreen(a1, a2); lyA1 = a1; lyA2 = a2; }
 }
 
 await loadStep(42, '조명을 다는 중…');
@@ -1053,14 +1075,14 @@ function resize() {
   camera.aspect = w / h; camera.fov = w < h ? 64 : 52; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
-setPreset('show'); sl.temp.value = light.temp * 100; Object.assign(light, lightTgt); applyLights(); drawScreen(0.3);
+setPreset('show'); sl.temp.value = light.temp * 100; Object.assign(light, lightTgt); applyLights(); drawScreen(0, 0);
 setView('walk'); camera.position.copy(avatar.position).add(new THREE.Vector3(2.6, 2.2, 0));
 await loadStep(74, '빛과 재질을 준비하는 중…');
 try { await renderer.compileAsync(scene, camera); } catch (e) {}
 await loadStep(86, '반사를 계산하는 중…');
 bakeEnv(); envDirty = true;
 const clock = new THREE.Clock();
-let frame = 0, slowAcc = 0, slowN = 0, degraded = !!window.__noAuto, lastDim = -1;
+let frame = 0, slowAcc = 0, slowN = 0, degraded = !!window.__noAuto;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   const mvNow = step(dt); updateCamera(t); tickOthers(dt); tickNet(dt, mvNow);
@@ -1070,7 +1092,7 @@ renderer.setAnimationLoop(() => {
   if (envDirty && diff < 0.02) { envTimer += dt; if (envTimer > 0.3) { bakeEnv(); envDirty = false; envTimer = 0; } } else envTimer = 0;
   if (crowd.visible && frame % 2 === 0) updateCrowd(t);
   performers.forEach(p => { p.g.rotation.z = Math.sin(t * 1.1 + p.ph) * 0.025; if (!p.seated) p.g.rotation.x = Math.sin(t * 0.8 + p.ph) * 0.012; });
-  const dim = Math.round((0.3 + 0.7 * light.high) * 20) / 20; if (dim !== lastDim) { drawScreen(dim); lastDim = dim; }
+  tickLyrics(t);
   if (usePost) { film.uniforms.time.value = t; composer.render(dt); } else renderer.render(scene, camera);
   frame++;
   // 느린 기기 자동 대응: 후보정·그림자·해상도 낮추기
