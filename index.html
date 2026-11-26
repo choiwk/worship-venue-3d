@@ -106,7 +106,7 @@
   <b>공연 구성</b>
   <table>
     <tr><td>편성 (12명)</td><td>보컬 7 · 일렉 1 · 베이스 1 · 드럼 1 · 건반 2</td></tr>
-    <tr><td>카펫</td><td>페르시아 러그 4장(230×170cm, 네이비 2 · 와인 2)을 2×2로, 4.6 × 3.4m</td></tr>
+    <tr><td>카펫</td><td>페르시아 러그 4장(270×200cm, 다크브라운)을 2×2로, 5.4 × 4.0m</td></tr>
     <tr><td>찬양팀 배치</td><td>긴 방향 9.0m × 폭 5.2m 타원으로 둘러서서 중앙을 바라봄</td></tr>
     <tr><td>스탠드 조명</td><td>좌·우 측벽 앞 2대, 각 4구 LED × 1단, 중앙 조준</td></tr>
     <tr><td>회중</td><td>찬양팀 타원에서 약 1.5m 띄워 둘러섬, 십자 통로 4개</td></tr>
@@ -158,7 +158,7 @@ const VENUE = {
 const SHOW = {
   center: { X: 9.69, Y: 8.19 },     // 무대 앞 끝에서 6.05m(v0.12와 같은 거리), 홀 가로 가운데. 케이블 길이 때문에 홀 정중앙이 아님
   right: 1,                         // 무대를 바라볼 때 오른쪽 = 북쪽(+1). 반대면 -1 (일렉·베이스·믹서 쪽)
-  rug: { w: 2.3, d: 1.7 },          // 페르시아 러그 한 장(m) 230 × 170cm. 2 × 2 = 4장, 4.6 × 3.4m
+  rug: { w: 2.7, d: 2.0 },          // 페르시아 러그 한 장(m) 270 × 200cm, 다크브라운. 2 × 2 = 4장, 5.4 × 4.0m
   ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
   ellipse: { a: 3.4, b: 3.4 },      // 찬양팀이 서는 원: 반지름 3.4m
   underlay: [7.4, 7.4],             // 러그 아래 어두운 바닥 천(m)
@@ -636,69 +636,59 @@ const faceCenter = (o, away = false) => { const t = P(C.X, C.Y); o.rotation.y = 
 const place = (o, deg, r, h = CY) => { const [X, Y] = polar(deg, r); o.position.copy(P(X, Y, h)); return o; };
 const shadowAll = g => g.traverse(m => { if (m.isMesh) m.castShadow = true; });
 const blockers = [];
-{ // 페르시아 무늬 러그 4장 (230 × 170cm)을 2×2로 붙여 4.6 × 3.4m
-  // 사용자 사진의 러그: 가운데 바탕(네이비 또는 와인빛 짙은 갈색)에 둥근 초록 테 메달리온, 사방으로 퍼지는 잔꽃 무늬,
-  // 와인색 넓은 띠 테두리(카르투슈 무늬) + 베이지 덩굴 띠, 맨 바깥은 짙은 감침 테두리
-  const rugTex = (field, bind) => mkTex(1380, 1020, (g, w, h) => {
-    const wine = '#4f1519', wineD = '#330c0f', beige = '#c2a174', cream = '#e3d2b0', tan = '#a9805c', salmon = '#b98a6c', green = '#46705d', ink = '#1a1412';
-    const fill = (c, x, y, ww, hh) => { g.fillStyle = c; g.fillRect(x, y, ww, hh); };
+{ // 페르시아 무늬 러그 4장 (270 × 200cm, 다크브라운)을 2×2로 붙여 5.4 × 4.0m
+  // 사용자 사진의 러그(다크브라운): 메달리온 없이 바탕 전체에 잔꽃·팔메트가 고르게 깔린 올오버 무늬,
+  // 아이보리 넓은 테두리(빽빽한 꽃 덩굴) 양옆으로 짙은 가는 띠, 맨 바깥은 자줏빛 감침. 1px ≈ 2mm
+  const tRug = mkTex(1350, 1000, (g, w, h) => {
+    const field = '#381a1c', guard = '#2a1719', bind = '#3a1a26', cream = '#d6c8ad', ivory = '#c9b797', tan = '#b08560',
+          rust = '#8a4630', red = '#6a2127', navy = '#26313f', teal = '#4c6c70', dark = '#1b1214';
+    const R = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.random() * a.length | 0];
+    const fill = (c, m) => { g.fillStyle = c; g.fillRect(m, m, w - 2 * m, h - 2 * m); };
     const blob = (x, y, rx, ry, an, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, an, 0, 6.3); g.fill(); };
-    const flower = (x, y, r, n, petal, mid) => { for (let k = 0; k < n; k++) { const an = k / n * 6.283; blob(x + Math.cos(an) * r * 0.55, y + Math.sin(an) * r * 0.55, r * 0.45, r * 0.24, an, petal); } blob(x, y, r * 0.26, r * 0.26, 0, mid); };
-    const spray = (x, y, r, an, c1, c2) => {   // 부채꼴 잎 다발 (사진의 페이즐리·잎 무늬)
-      for (let k = -3; k <= 3; k++) { const a = an + k * 0.32; blob(x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7, r * 0.34, r * 0.12, a, k % 2 ? c1 : c2); }
-      blob(x, y, r * 0.3, r * 0.3, 0, c1); blob(x, y, r * 0.14, r * 0.14, 0, wine);
+    const rosette = (x, y, r, petal, mid, n = 6) => { for (let k = 0; k < n; k++) { const an = k / n * 6.283; blob(x + Math.cos(an) * r * 0.55, y + Math.sin(an) * r * 0.55, r * 0.42, r * 0.26, an, petal); } blob(x, y, r * 0.28, r * 0.28, 0, mid); };
+    const palmette = (x, y, r) => {   // 사진 바탕의 큰 꽃: 아이보리 바깥 꽃잎 → 청록·남색 속 → 붉은 가운데, 짙은 테 점
+      for (let k = 0; k < 12; k++) { const an = k / 12 * 6.283; blob(x + Math.cos(an) * r * 0.78, y + Math.sin(an) * r * 0.78, r * 0.3, r * 0.17, an, k % 2 ? cream : ivory); }
+      blob(x, y, r * 0.62, r * 0.62, 0, dark);
+      for (let k = 0; k < 8; k++) { const an = k / 8 * 6.283 + 0.2; blob(x + Math.cos(an) * r * 0.38, y + Math.sin(an) * r * 0.38, r * 0.22, r * 0.13, an, k % 2 ? teal : navy); }
+      blob(x, y, r * 0.2, r * 0.2, 0, rust); blob(x, y, r * 0.09, r * 0.09, 0, cream);
     };
-    const B = 18, O = 40, Wb = 92, I = 18;   // 감침 테, 바깥 덩굴 띠, 와인 띠, 안쪽 덩굴 띠 폭(px)
-    fill(bind, 0, 0, w, h);
-    fill(beige, B, B, w - 2 * B, h - 2 * B);
-    fill(wine, B + O, B + O, w - 2 * (B + O), h - 2 * (B + O));
-    const fi = B + O + Wb; fill(beige, fi, fi, w - 2 * fi, h - 2 * fi);
-    const fx = fi + I; fill(field, fx, fx, w - 2 * fx, h - 2 * fx);
-    // 덩굴 띠: 베이지 바탕에 크림·짙은 S자 물결
-    const vine = (m, bw) => { g.lineWidth = 3; for (const [ax, ay, bx2, by2] of [[m, m, w - m, m], [m, h - m, w - m, h - m], [m, m, m, h - m], [w - m, m, w - m, h - m]]) { const len = Math.hypot(bx2 - ax, by2 - ay), ux = (bx2 - ax) / len, uy = (by2 - ay) / len; for (let t = 0; t < len; t += bw * 1.4) { const cx = ax + ux * t + uy * 0, cy = ay + uy * t; g.strokeStyle = (t / (bw * 1.4)) % 2 < 1 ? ink : cream; g.beginPath(); g.arc(cx, cy, bw * 0.32, 0, 3.6); g.stroke(); blob(cx + ux * bw * 0.6, cy + uy * bw * 0.6, bw * 0.16, bw * 0.08, Math.atan2(uy, ux) + 0.8, cream); } } };
-    vine(B + O / 2, O); vine(fi + I / 2, I * 1.6);
-    // 와인 띠: 카르투슈(둥근 꽃 판)와 사이 꽃
-    const bm = B + O + Wb / 2;
-    const cart = (x, y) => { blob(x, y, 40, 30, 0, wineD); blob(x, y, 34, 24, 0, tan); blob(x, y, 26, 17, 0, wine); flower(x, y, 16, 8, beige, ink); for (const dx of [-1, 1]) spray(x + dx * 58, y, 18, dx > 0 ? 0 : 3.14, beige, green); };
-    for (let x = 160; x < w - 120; x += 175) { cart(x, bm); cart(x, h - bm); }
-    for (let y = 190; y < h - 150; y += 175) { cart(bm, y); cart(w - bm, y); }
-    for (const [x, y] of [[bm, bm], [w - bm, bm], [bm, h - bm], [w - bm, h - bm]]) flower(x, y, 26, 10, beige, wine);
-    // 바탕: 메달리온을 중심으로 동심원 줄을 따라 잎 다발과 잔꽃
+    const leaf = (x, y, r, an, c) => { blob(x, y, r, r * 0.38, an, c); g.strokeStyle = dark; g.lineWidth = 1; g.beginPath(); g.moveTo(x - Math.cos(an) * r * 0.8, y - Math.sin(an) * r * 0.8); g.lineTo(x + Math.cos(an) * r * 0.8, y + Math.sin(an) * r * 0.8); g.stroke(); };
+    const vine = (x, y, len, an, c) => { g.strokeStyle = c; g.lineWidth = 1.6; g.beginPath(); for (let t = 0; t <= 1; t += 0.1) { const b = an + Math.sin(t * 5) * 0.5; g.lineTo(x + Math.cos(b) * len * t, y + Math.sin(b) * len * t); } g.stroke(); };
+    const B = 14, O = 30, Wb = 118, I = 30, L = 6;   // 감침, 바깥 가는 띠, 아이보리 테두리, 안쪽 가는 띠, 크림 선
+    fill(bind, 0); fill(guard, B); fill(ivory, B + O); fill(guard, B + O + Wb); fill(cream, B + O + Wb + I);
+    const fx = B + O + Wb + I + L; fill(field, fx);
+    // 바탕: 큰 꽃을 엇갈린 격자로, 사이를 덩굴·잎·잔꽃으로 채움
     g.save(); g.beginPath(); g.rect(fx, fx, w - 2 * fx, h - 2 * fx); g.clip();
-    const cx = w / 2, cy = h / 2;
-    // 사진처럼 바탕이 잎 다발로 촘촘히 덮이게: 무늬 하나 약 8~12cm(1px ≈ 1.7mm)
-    for (let ring = 0; ring < 12; ring++) {
-      const r = 215 + ring * 52, n = Math.round(6.283 * r * 1.1 / 58);
-      for (let k = 0; k < n; k++) {
-        const an = (k + (ring % 2) * 0.5) / n * 6.283, x = cx + Math.cos(an) * r * 1.18, y = cy + Math.sin(an) * r;
-        if (x < fx - 30 || x > w - fx + 30 || y < fx - 30 || y > h - fx + 30) continue;
-        if (k % 2) spray(x, y, 30, an + (ring % 2 ? 3.14 : 0), beige, tan); else flower(x, y, 17, 7, k % 4 ? cream : tan, k % 3 ? wine : green);
-      }
+    for (let i = 0; i < 260; i++) vine(R(fx, w - fx), R(fx, h - fx), R(30, 70), R(0, 6.3), Math.random() < 0.6 ? rust : tan);
+    for (let y = fx + 40, row = 0; y < h - fx + 40; y += 108, row++) for (let x = fx + 40 + (row % 2) * 70; x < w - fx + 40; x += 140) {
+      palmette(x + R(-6, 6), y + R(-6, 6), R(26, 34));
+      for (let k = 0; k < 4; k++) { const an = k * 1.57 + 0.78; leaf(x + Math.cos(an) * 44, y + Math.sin(an) * 40, 13, an, pick([tan, teal, rust])); }
     }
-    for (let i = 0; i < 1800; i++) { const x = fx + Math.random() * (w - 2 * fx), y = fx + Math.random() * (h - 2 * fx); if (Math.hypot((x - cx) / 1.18, y - cy) < 175) continue; blob(x, y, 4, 2.4, Math.random() * 3, Math.random() < 0.6 ? beige : Math.random() < 0.5 ? cream : wine); }
+    for (let i = 0; i < 900; i++) { const x = R(fx, w - fx), y = R(fx, h - fx); rosette(x, y, R(6, 13), pick([cream, ivory, tan, tan, teal, navy]), pick([red, rust, navy, dark])); }
     g.restore();
-    // 가운데 메달리온: 16갈래 초록 테 → 연어빛 몸 → 베이지 꽃잎 고리 → 바탕색 속 → 와인 별
-    const star16 = (R, r, c) => { g.fillStyle = c; g.beginPath(); for (let k = 0; k < 32; k++) { const rr = k % 2 ? r : R, an = k / 32 * 6.283; g.lineTo(cx + Math.cos(an) * rr * 1.12, cy + Math.sin(an) * rr); } g.closePath(); g.fill(); };
-    star16(200, 176, wineD); star16(193, 169, green); star16(178, 155, salmon);
-    for (let k = 0; k < 16; k++) { const an = k / 16 * 6.283; spray(cx + Math.cos(an) * 125 * 1.12, cy + Math.sin(an) * 125, 26, an, cream, green); }
-    blob(cx, cy, 80, 72, 0, cream); blob(cx, cy, 72, 64, 0, field);
-    for (let k = 0; k < 8; k++) { const an = k / 8 * 6.283; blob(cx + Math.cos(an) * 40, cy + Math.sin(an) * 36, 12, 6, an, tan); }
-    g.fillStyle = wine; g.beginPath(); for (let k = 0; k < 16; k++) { const rr = k % 2 ? 9 : 22, an = k / 16 * 6.283; g.lineTo(cx + Math.cos(an) * rr, cy + Math.sin(an) * rr); } g.closePath(); g.fill();
-    // 짧은 털 결: 가는 가로줄 + 점 노이즈 (사진처럼 무광의 부드러운 면)
-    g.globalAlpha = 0.07; for (let y = 0; y < h; y += 3) { g.fillStyle = y % 6 ? '#000' : '#fff'; g.fillRect(0, y, w, 1); } g.globalAlpha = 1;
-    speckle(g, w, h, 40000, 30, 200, 0.08);
+    // 아이보리 테두리: 빽빽한 꽃과 잎(붉은·남색·녹청)
+    const inBand = (x, y) => { const a = B + O, b = B + O + Wb; return (x > a && x < w - a && y > a && y < h - a) && !(x > b && x < w - b && y > b && y < h - b); };
+    for (let i = 0; i < 9000; i++) {
+      const x = R(0, w), y = R(0, h); if (!inBand(x, y)) continue;
+      const t = Math.random();
+      if (t < 0.15) palmette(x, y, R(16, 26)); else if (t < 0.55) rosette(x, y, R(9, 17), pick([red, rust, navy, teal, dark]), pick([ivory, dark]));
+      else leaf(x, y, R(10, 17), R(0, 6.3), pick([teal, navy, rust, red, dark]));
+    }
+    // 짙은 가는 띠: 작은 꽃이 일정하게 줄지어
+    const guardRow = (m) => { for (const [ax, ay, bx, by] of [[m, m, w - m, m], [m, h - m, w - m, h - m], [m, m, m, h - m], [w - m, m, w - m, h - m]]) { const len = Math.hypot(bx - ax, by - ay); for (let t = 0; t < len; t += 24) { const x = ax + (bx - ax) * t / len, y = ay + (by - ay) * t / len; rosette(x, y, 8, (t / 24) % 2 < 1 ? ivory : tan, red, 6); } } };
+    guardRow(B + O / 2); guardRow(B + O + Wb + I / 2);
+    // 짧은 털 결: 살짝 흐리게 하고 점 노이즈 (사진처럼 무늬 가장자리가 보송하게)
+    const cp = document.createElement('canvas'); cp.width = w; cp.height = h; cp.getContext('2d').drawImage(g.canvas, 0, 0);
+    g.filter = 'blur(0.7px)'; g.drawImage(cp, 0, 0); g.filter = 'none';
+    speckle(g, w, h, 60000, 20, 220, 0.09);
   });
-  const looks = { navy: ['#1b2a45', '#1f3a66'], wine: ['#3b2420', '#4a3b36'] };   // [바탕, 감침 테]
-  const mats = Object.fromEntries(Object.entries(looks).map(([k, [field, bind]]) => {
-    const t = rugTex(field, bind); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-    const side = std({ color: bind, roughness: 1 });
-    return [k, [side, side, std({ map: t, roughness: 0.9 }), side, side, side]];
-  }));
+  tRug.wrapS = tRug.wrapT = THREE.ClampToEdgeWrapping;
+  const side = std({ color: 0x3a1a26, roughness: 1 }), rugMat = [side, side, std({ map: tRug, roughness: 0.92 }), side, side, side];
   const { w, d } = SHOW.rug;
   const under = new THREE.Mesh(new THREE.BoxGeometry(SHOW.underlay[0], 0.004, SHOW.underlay[1]), std({ color: 0x2a211c, roughness: 1 })); under.position.copy(P(C.X, C.Y, 0.008)); under.receiveShadow = true; dyn.add(under);
-  // 4장을 2×2로, 네이비·와인을 엇갈려
-  [[-1, -1, 0.004, 'navy'], [1, -1, -0.006, 'wine'], [-1, 1, -0.005, 'wine'], [1, 1, 0.007, 'navy']].forEach(([sx, sy, rot, look]) => {
-    const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), mats[look]);
+  // 4장을 2×2로 (돌려 놓은 두 장은 무늬 방향이 반대라 이음매가 덜 똑같아 보인다)
+  [[-1, -1, 0.004], [1, -1, Math.PI - 0.006], [-1, 1, Math.PI - 0.005], [1, 1, 0.007]].forEach(([sx, sy, rot]) => {
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), rugMat);
     rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d / 2 + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
   });
 }
