@@ -95,12 +95,13 @@
   <div style="text-align:right"><button data-close>닫기</button></div>
 </div>
 <div class="panel" id="info">
-  <h2>다목적실 3D v0.14 — 중앙 원형 무대</h2>
+  <h2>다목적실 3D v0.15 — 중앙 원형 무대</h2>
   <table>
-    <tr><td>평면 30m × 18m, 기둥 간격 7.5m, 맞배지붕</td><td><span class="g gA">A</span></td></tr>
+    <tr><td>평면 26.3m × 16.4m (앞 무대 3.6 + 강당 20.5 + 방송실 2.1m), 맞배지붕</td><td><span class="g gB">B</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
-    <tr><td>측벽 5m · 용마루 8m · 무대 0.4m · LED 크기</td><td><span class="g gC">C</span></td></tr>
-    <tr><td>동쪽(뒤) 벽 마감, 동쪽 구획 용도 — 사진 없음</td><td><span class="g gC">C</span></td></tr>
+    <tr><td>LED 폭 4.2m · 무대 첫 계단 0.6m</td><td><span class="g gB">B</span></td></tr>
+    <tr><td>측벽 5m · 용마루 8m · 무대 높이 0.4m</td><td><span class="g gC">C</span></td></tr>
+    <tr><td>동쪽(뒤) 벽: 출입문, 남쪽 방송실(깊이 2.1m)</td><td><span class="g gB">B</span></td></tr>
   </table>
   <b>공연 구성</b>
   <table>
@@ -112,7 +113,7 @@
   </table>
   <b>질감 출처</b> — 모두 CC0(자유 이용) 사진 텍스처를 현장 색에 맞춰 보정<br>
   바닥: ambientCG WoodFloor051 · 벽/기둥: Poly Haven oak_veneer_01 · 하부 목재: Poly Haven plywood · 러그 무늬: 직접 그린 페르시아풍 패턴<br><br>
-  <span class="g gA">A</span> 도면 표기값 · <span class="g gB">B</span> 사진으로 확인 · <span class="g gC">C</span> 추정값
+  <span class="g gA">A</span> 도면 표기값 · <span class="g gB">B</span> 사진·걸음 실측으로 확인 · <span class="g gC">C</span> 추정값
   <div style="margin-top:10px;text-align:right"><button data-close>닫기</button></div>
 </div>
 
@@ -144,17 +145,18 @@ await loadStep(28, '공연장 뼈대를 세우는 중…');
    좌표: 도면 X(동쪽) → three.x,  도면 Y(북쪽) → three.z = -Y
    ========================================================= */
 const VENUE = {
-  length: 30.0, width: 18.0, grid: [0, 7.5, 15, 22.5, 30],
+  // 2026-11 실측(발 길이 26cm × 걸음 수): 가로 63 → 16.38m, 세로 = 앞 무대 14(3.64m) + 강당 79(20.54m) + 방송실 8(2.08m) = 26.26m
+  length: 26.26, width: 16.38, grid: [0, 6.565, 13.13, 19.695, 26.26],   // 기둥 칸은 도면처럼 4칸, 실측 길이에 맞춰 고르게 나눔
   eave: 5.0, ridge: 8.0,
-  stage: { depth: 4.75, zFrom: 0.3, zTo: 15.88, h: 0.4 },
-  screen: { w: 4.5, h: 2.5, bottom: 2.9 },
+  stage: { depth: 3.04, step: 0.6, zFrom: 0.3, zTo: 14.26, h: 0.4 },   // 위 무대 3.04 + 첫 계단 2.3걸음(0.6m) = 14걸음
+  screen: { w: 4.16, h: 2.34, bottom: 2.9 },                            // 16걸음, 16:9
   wainscot: 1.2, winTop: 4.5,
-  xbox: { x0: 27.12, x1: 30, y0: 0, y1: 8.3, h: 3.0 },
-  entry: { x1: 2.6, y0: 15.9, h: 3.2 },
+  xbox: { x0: 24.18, x1: 26.26, y0: 0, y1: 8.3, h: 3.0 },   // 방송실(뒤쪽 벽 남쪽, 깊이 8걸음)
+  entry: { x1: 2.6, y0: 14.28, h: 3.2 },
 };
 /* SHOW — 이번 공연 구성 */
 const SHOW = {
-  center: { X: 10.8, Y: 9.0 },      // 기존 무대(언덕) 바로 아래. 케이블 길이 때문에 홀 정중앙이 아님
+  center: { X: 9.69, Y: 8.19 },     // 무대 앞 끝에서 6.05m(v0.12와 같은 거리), 홀 가로 가운데. 케이블 길이 때문에 홀 정중앙이 아님
   right: 1,                         // 무대를 바라볼 때 오른쪽 = 북쪽(+1). 반대면 -1 (일렉·베이스·믹서 쪽)
   rug: { w: 2.4, d: 1.6 },          // 페르시아 러그 한 장(m). 가로 2장 × 세로 3장 = 6장, 4.8 × 4.8m
   ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
@@ -323,8 +325,11 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, Wd), floorMat);
 floor.rotation.x = -Math.PI / 2; floor.position.set(L / 2, 0, -HW); floor.receiveShadow = true; arch.add(floor);
 {
   const W = 2048, H = Math.round(W * Wd / L), s = W / L;
+  // 코트 선은 30×18m 홀 기준 좌표 그대로 그리고, 실측 홀 바닥 가운데로 옮겨 0.9배로 줄인다 (실제 선 치수는 아직 안 잼)
+  const K = 0.9, FX = (VENUE.stage.depth + VENUE.stage.step + L) / 2;
   const lines = mkTex(W, H, g => {
-    const cx = X => X * s, cy = Y => (Wd - Y) * s;
+    const cx = X => X * s, cy = Y => (18 - Y) * s;
+    g.setTransform(K, 0, 0, K, s * (FX - 17.4 * K), s * (HW - 9 * K));
     g.globalAlpha = 0.9;
     g.strokeStyle = '#2f5a3a'; g.lineWidth = 3.5; g.strokeRect(cx(8.4), cy(13.5), 18 * s, 9 * s);
     g.beginPath(); g.moveTo(cx(17.4), cy(13.5)); g.lineTo(cx(17.4), cy(4.5)); g.stroke();
@@ -353,7 +358,7 @@ floor.rotation.x = -Math.PI / 2; floor.position.set(L / 2, 0, -HW); floor.receiv
 {
   const ao = new THREE.MeshBasicMaterial({ map: tAO, transparent: true, opacity: 0.4, depthWrite: false, fog: false });
   const strip = (len, x, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.8), ao); m.rotation.set(-Math.PI / 2, 0, ry, 'YXZ'); m.rotation.y = ry; m.position.set(x, 0.004, z); arch.add(m); };
-  strip(L, L / 2, -0.4, Math.PI); strip(L, L / 2, -Wd + 0.4, 0); strip(Wd, L - 0.4, -HW, Math.PI / 2); strip(Wd, VENUE.stage.depth + 0.8, -HW, -Math.PI / 2);
+  strip(L, L / 2, -0.4, Math.PI); strip(L, L / 2, -Wd + 0.4, 0); strip(Wd, L - 0.4, -HW, Math.PI / 2); strip(Wd, VENUE.stage.depth + VENUE.stage.step + 0.4, -HW, -Math.PI / 2);
 }
 
 /* ---------- gable walls ---------- */
@@ -439,7 +444,7 @@ const roofGroup = new THREE.Group(); arch.add(roofGroup);
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.26, 16), M.highbay); glow.rotation.x = Math.PI / 2; glow.position.copy(P(X, Y, h - 0.16)); roofGroup.add(glow);
     cyl(0.01, M.black, P(X, Y, h + 0.15), P(X, Y, roofAt(Y) - 0.1), roofGroup, 4);
   }
-  for (const Y of [7.6, 10.4]) {      // 건물에 원래 달린 무대 쪽 조명 배튼 (이번 공연 미사용)
+  for (const Y of [HW - 1.4, HW + 1.4]) {      // 건물에 원래 달린 무대 쪽 조명 배튼 (이번 공연 미사용)
     cyl(0.04, M.blackMetal, P(1.2, Y, 7.0), P(13, Y, 7.0), roofGroup);
     for (let X = 1.8; X < 13; X += 1.6) { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.28, 12), M.blackMetal); f.position.copy(P(X, Y, 6.8)); roofGroup.add(f); }
   }
@@ -448,13 +453,13 @@ const roofGroup = new THREE.Group(); arch.add(roofGroup);
 /* ---------- fixed stage, boxes, screen ---------- */
 const S = VENUE.stage, E_ = VENUE.entry, X_ = VENUE.xbox;
 box(S.depth, S.h, S.zTo - S.zFrom, M.stageTop, S.depth / 2, S.h / 2, -(S.zFrom + S.zTo) / 2, { cast: true, recv: true });
-box(0.4, S.h / 2, S.zTo - S.zFrom, M.stageFace, S.depth + 0.2, S.h / 4, -(S.zFrom + S.zTo) / 2, { recv: true });
+box(S.step, S.h / 2, S.zTo - S.zFrom, M.stageFace, S.depth + S.step / 2, S.h / 4, -(S.zFrom + S.zTo) / 2, { recv: true });
 box(E_.x1, E_.h, Wd - E_.y0, M.boxWood, E_.x1 / 2, E_.h / 2, -(E_.y0 + Wd) / 2, { cast: true, recv: true });
 box(0.06, 2.1, 1.0, M.white, E_.x1 + 0.03, 0.6 + 1.05, -(E_.y0 + 1.0));
 for (let k = 0; k < 4; k++) box(0.35, 0.15 * (k + 1), 1.2, M.stageFace, E_.x1 + 1.4 - k * 0.35, 0.075 * (k + 1), -(E_.y0 + 1.0), { recv: true });
 box(X_.x1 - X_.x0, X_.h, X_.y1 - X_.y0, M.boxWood, (X_.x0 + X_.x1) / 2, X_.h / 2, -(X_.y0 + X_.y1) / 2, { cast: true, recv: true });
 box(0.05, 2.1, 0.95, M.white, X_.x0 - 0.02, 1.05, -4.0);
-for (const z of [-0.75, -Wd + 0.75]) { box(0.62, 1.1, 0.58, M.tolex, 4.6, 3.5, z); const gr = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 1.0), M.grille); gr.rotation.y = Math.PI / 2; gr.position.set(4.912, 3.5, z); arch.add(gr); }   // 메인 스피커
+for (const z of [-0.75, -Wd + 0.75]) { box(0.62, 1.1, 0.58, M.tolex, S.depth + S.step - 0.15, 3.5, z); const gr = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 1.0), M.grille); gr.rotation.y = Math.PI / 2; gr.position.set(S.depth + S.step + 0.162, 3.5, z); arch.add(gr); }   // 메인 스피커
 
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360;
 const scrG = scrC.getContext('2d'), scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace;
@@ -480,8 +485,8 @@ key.position.copy(P(C.X + 1.5, C.Y - 1, 22)); key.target.position.copy(P(C.X, C.
 key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03; key.shadow.radius = 4;
 Object.assign(key.shadow.camera, { left: -16, right: 16, top: 11, bottom: -11, near: 5, far: 30 });
 scene.add(key, key.target);
-const warm = [5, 15, 25].map(X => { const p = new THREE.PointLight(0xffdcae, 70, 0, 2); p.position.copy(P(X, HW, 6.0)); scene.add(p); return p; });
-const wallPts = [[7.5, 1.3], [22.5, 1.3], [7.5, Wd - 1.3], [22.5, Wd - 1.3]].map(([X, Y]) => { const p = new THREE.PointLight(0xffc890, 24, 14, 2); p.position.copy(P(X, Y, 3.3)); scene.add(p); return p; });
+const warm = [L / 6, L / 2, L * 5 / 6].map(X => { const p = new THREE.PointLight(0xffdcae, 70, 0, 2); p.position.copy(P(X, HW, 6.0)); scene.add(p); return p; });
+const G1 = VENUE.grid[1], G3 = VENUE.grid[3], wallPts = [[G1, 1.3], [G3, 1.3], [G1, Wd - 1.3], [G3, Wd - 1.3]].map(([X, Y]) => { const p = new THREE.PointLight(0xffc890, 24, 14, 2); p.position.copy(P(X, Y, 3.3)); scene.add(p); return p; });
 
 // 스탠드 조명: 삼각대 + 폴 + T바 2단 × LED 파 4구
 const standGroup = new THREE.Group(); scene.add(standGroup);
@@ -702,7 +707,7 @@ function cable(pts, r = 0.007) {
   const curve = new THREE.CatmullRomCurve3(pts.map(([X, Y]) => P(X, Y, CY + r + 0.002)));
   const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, r, 5), M.black); m.receiveShadow = true; dyn.add(m);
 }
-const MIXER = [6.3, HW + SHOW.right * (HW - 1.5)];
+const MIXER = [S.depth + S.step + 1.15, HW + SHOW.right * (HW - 1.5)];
 const performers = [];
 {
   const R = SHOW.ringR, SB = [C.X, C.Y];        // 원 가운데: 마이크·믹서 연결 박스
@@ -790,10 +795,10 @@ const crowdSets = [];
       if (spots.length >= A.count && dx < 1.5) continue;                  // 추가 인원은 뒤쪽에만
       if (Math.abs(dx) < A.aisle / 2 || Math.abs(dy) < A.aisle / 2) continue;
       if (X < 0.8 || X > L - 0.8 || Y < 0.9 || Y > Wd - 0.9) continue;
-      if (X > S.depth - 0.4 && X < S.depth + 0.9) continue;               // 무대 턱
+      if (X > S.depth - 0.4 && X < S.depth + S.step + 0.5) continue;               // 무대 턱
       if (X < S.depth && (Y < S.zFrom + 0.4 || Y > S.zTo - 0.4)) continue;
       if (X > X_.x0 - 0.7 && Y < X_.y1 + 0.7) continue;
-      if (Math.hypot(X - VIEW_AUD[0], Y - VIEW_AUD[1]) < 0.6 || Math.hypot(X - 28.8, Y - 10.5) < 3.2) continue;
+      if (Math.hypot(X - VIEW_AUD[0], Y - VIEW_AUD[1]) < 0.6 || Math.hypot(X - (L - 1.2), Y - 10.5) < 3.2) continue;
       if (reserved.some(([sx, sy]) => Math.hypot(X - sx, Y - sy) < 1.25) || soundBlock.some(([sx, sy, sr]) => Math.hypot(X - sx, Y - sy) < sr)) continue;
       if (rnd() < 0.1) continue;
       spots.push({ h: X < S.depth ? S.h : 0, x: X + (rnd() - 0.5) * 0.16, z: -(Y + (rnd() - 0.5) * 0.16), s: 0.89 + rnd() * 0.13, w: 0.9 + rnd() * 0.2, rot: 0, ph: rnd() * 6.3, v: (rnd() < 0.15 ? 2 : 0) + (rnd() < 0.45 ? 1 : 0) });
@@ -834,13 +839,13 @@ const gridGroup = new THREE.Group(); gridGroup.visible = false; scene.add(gridGr
 {
   const pts = [];
   VENUE.grid.forEach((gx, i) => { pts.push(P(gx, 0, 0.03), P(gx, Wd, 0.03)); const s = textSprite('X' + (i + 1)); s.position.copy(P(Math.min(Math.max(gx, 0.6), L - 0.6), 0.9, 0.5)); gridGroup.add(s); });
-  [[0, 'Y4'], [9, 'Y5'], [18, 'Y6']].forEach(([y, n]) => { pts.push(P(0, y, 0.03), P(L, y, 0.03)); const s = textSprite(n); s.position.copy(P(L + 1.4, y, 0.5)); gridGroup.add(s); });
+  [[0, 'Y4'], [HW, 'Y5'], [Wd, 'Y6']].forEach(([y, n]) => { pts.push(P(0, y, 0.03), P(L, y, 0.03)); const s = textSprite(n); s.position.copy(P(L + 1.4, y, 0.5)); gridGroup.add(s); });
   gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xf2c14e, depthTest: false, transparent: true, fog: false })));
 }
 
 /* ---------- avatar ---------- */
 const av = makePerson({ top: 0x9a7b3a, bottom: 0x262a33, h: 1.72 });
-const avatar = av.g; scene.add(avatar); avatar.position.copy(P(26.9, 9.0));
+const avatar = av.g; scene.add(avatar); avatar.position.copy(P(L - 3.4, HW));
 
 await loadStep(68, '마무리 장식 중…');
 
@@ -921,10 +926,10 @@ const lookAtCenter = () => { yaw = Math.atan2(P(C.X, C.Y).z - avatar.position.z,
 function setView(v) {
   viewBtns.forEach(b => b.classList.toggle('on', b.dataset.view === v));
   mode = v === 'walk' ? 'third' : v === 'orbit' ? 'orbit' : 'first';
-  if (v === 'entrance') avatar.position.copy(P(28.8, 10.5));
+  if (v === 'entrance') avatar.position.copy(P(L - 1.2, 10.5));
   if (v === 'performer') avatar.position.copy(P(...polar((SHOW.vocals[5] + SHOW.vocals[6]) / 2, SHOW.ringR + 0.25)));
   if (v === 'audience') avatar.position.copy(P(...VIEW_AUD));
-  if (v === 'walk' && Math.hypot(avatar.position.x - C.X, avatar.position.z + C.Y) < 4.6) avatar.position.copy(P(26.9, 9.0));
+  if (v === 'walk' && Math.hypot(avatar.position.x - C.X, avatar.position.z + C.Y) < 4.6) avatar.position.copy(P(L - 3.4, HW));
   if (v !== 'first' && v !== 'orbit') lookAtCenter();
   pitch = mode === 'third' ? 0.25 : v === 'performer' ? 0.1 : 0.03;
   orbit.enabled = mode === 'orbit'; joy.style.display = document.getElementById('jump').style.display = mode === 'orbit' ? 'none' : '';
@@ -965,7 +970,7 @@ function blocked(x, z) {
 }
 function groundAt(x, z) {
   const Y = -z;
-  if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + 0.4) return S.h / 2; }
+  if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + S.step) return S.h / 2; }
   return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d * 1.5 ? CY : 0;
 }
 const tmp = new THREE.Vector3();
