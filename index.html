@@ -668,7 +668,7 @@ function makeMicStand() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.027, 10, 8), M.chrome); head.position.set(0, 1.52, 0.125); g.add(head);
   shadowAll(g); return g;
 }
-// 바닥 조명(찬양팀 사이사이). bar: LED 막대 140cm·40W, 아니면 갓 스탠드 150cm(갓 24×30cm, 받침 23cm)·전구 8W
+// 바닥 조명(찬양팀 사이사이). bar: 검정 LED 막대 160cm·40W, 아니면 갓 스탠드 150cm(갓 24×30cm, 받침 23cm)·전구 8W
 // 밝기는 장면 기준(스탠드 스포트 210)에 맞춘 값. 40W : 8W 비율만 지킨다
 function makeFloorLamp(bar) {
   const g = new THREE.Group(), V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -676,10 +676,10 @@ function makeFloorLamp(bar) {
   const lamp = new THREE.PointLight(bar ? 0xffc58a : 0xffe0b0, bar ? 12 : 2.4, 7, 2);
   if (bar) {
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 24), M.blackMetal); base.position.y = 0.04; g.add(base);
-    cyl(0.013, M.blackMetal, V(0, 0.08, 0), V(0, 0.42, 0), g, 10);
-    cyl(0.012, glow(0xffc58a), V(0, 0.42, 0), V(0, 1.37, 0), g, 10);
-    cyl(0.014, M.blackMetal, V(0, 1.37, 0), V(0, 1.4, 0), g, 10);
-    lamp.position.y = 0.9;
+    cyl(0.013, M.blackMetal, V(0, 0.08, 0), V(0, 0.48, 0), g, 10);
+    cyl(0.012, glow(0xffc58a), V(0, 0.48, 0), V(0, 1.57, 0), g, 10);
+    cyl(0.014, M.blackMetal, V(0, 1.57, 0), V(0, 1.6, 0), g, 10);
+    lamp.position.y = 1.03;
   } else {
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.02, 24), M.white); base.position.y = 0.01; g.add(base);
     cyl(0.009, M.white, V(0, 0.02, 0), V(0, 1.2, 0), g, 8);
