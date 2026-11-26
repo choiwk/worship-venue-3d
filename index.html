@@ -106,7 +106,7 @@
   <b>공연 구성</b>
   <table>
     <tr><td>편성 (12명)</td><td>보컬 7 · 일렉 1 · 베이스 1 · 드럼 1 · 건반 2</td></tr>
-    <tr><td>카펫</td><td>페르시아 러그 6장(240×160cm)을 2×3으로, 4.8 × 4.8m</td></tr>
+    <tr><td>카펫</td><td>페르시아 러그 4장(230×170cm, 네이비 2 · 와인 2)을 2×2로, 4.6 × 3.4m</td></tr>
     <tr><td>찬양팀 배치</td><td>긴 방향 9.0m × 폭 5.2m 타원으로 둘러서서 중앙을 바라봄</td></tr>
     <tr><td>스탠드 조명</td><td>좌·우 측벽 앞 2대, 각 4구 LED × 1단, 중앙 조준</td></tr>
     <tr><td>회중</td><td>찬양팀 타원에서 약 1.5m 띄워 둘러섬, 십자 통로 4개</td></tr>
@@ -148,7 +148,7 @@ const VENUE = {
   // 2026-11 실측(발 길이 26cm × 걸음 수): 가로 63 → 16.38m, 세로 = 앞 무대 14(3.64m) + 강당 79(20.54m) + 방송실 8(2.08m) = 26.26m
   length: 26.26, width: 16.38, grid: [0, 6.565, 13.13, 19.695, 26.26],   // 기둥 칸은 도면처럼 4칸, 실측 길이에 맞춰 고르게 나눔
   eave: 5.0, ridge: 8.0,
-  stage: { depth: 3.04, step: 0.6, zFrom: 0.3, zTo: 14.26, h: 0.4 },   // 위 무대 3.04 + 첫 계단 2.3걸음(0.6m) = 14걸음
+  stage: { depth: 3.04, step: 0.6, zFrom: 0.3, zTo: 14.26, h: 0.4 },   // 위 무대 3.04 + 첫 계단 2.3걸음(0.6m) = 14걸음. 계단 한 단 20cm(첫 계단 h/2), 무대 위 40cm
   screen: { w: 4.16, h: 2.34, bottom: 2.9 },                            // 16걸음, 16:9
   wainscot: 1.2, winTop: 4.5,
   xbox: { x0: 24.18, x1: 26.26, y0: 0, y1: 8.3, h: 3.0 },   // 방송실(뒤쪽 벽 남쪽, 깊이 8걸음)
@@ -158,7 +158,7 @@ const VENUE = {
 const SHOW = {
   center: { X: 9.69, Y: 8.19 },     // 무대 앞 끝에서 6.05m(v0.12와 같은 거리), 홀 가로 가운데. 케이블 길이 때문에 홀 정중앙이 아님
   right: 1,                         // 무대를 바라볼 때 오른쪽 = 북쪽(+1). 반대면 -1 (일렉·베이스·믹서 쪽)
-  rug: { w: 2.4, d: 1.6 },          // 페르시아 러그 한 장(m). 가로 2장 × 세로 3장 = 6장, 4.8 × 4.8m
+  rug: { w: 2.3, d: 1.7 },          // 페르시아 러그 한 장(m) 230 × 170cm. 2 × 2 = 4장, 4.6 × 3.4m
   ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
   ellipse: { a: 3.4, b: 3.4 },      // 찬양팀이 서는 원: 반지름 3.4m
   underlay: [7.4, 7.4],             // 러그 아래 어두운 바닥 천(m)
@@ -466,7 +466,7 @@ const LYRICS = ['오라 우리가 서로 사랑하자', '우리가 주를 찬양
 const scrC = document.createElement('canvas'); scrC.width = 1280; scrC.height = 720;
 const scrG = scrC.getContext('2d'), scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace; scrT.anisotropy = 8;
 const screenMat = new THREE.MeshBasicMaterial({ map: scrT });
-screenMat.color.setScalar(1.6);      // 흰 글씨가 블룸 문턱(1.15)을 넘어 은은히 번지게. 검은 바탕은 0 이라 그대로 검다
+screenMat.color.setScalar(1.2);      // 흰 글씨가 블룸 문턱(1.15)을 살짝만 넘게 (1.6 은 너무 눈부셨음). 검은 바탕은 0 이라 그대로 검다
 const screen = new THREE.Mesh(new THREE.PlaneGeometry(VENUE.screen.w, VENUE.screen.h), screenMat);
 screen.rotation.y = Math.PI / 2; screen.position.set(0.08, VENUE.screen.bottom + VENUE.screen.h / 2, -HW); arch.add(screen);
 box(0.08, VENUE.screen.h + 0.12, VENUE.screen.w + 0.12, M.black, 0.03, screen.position.y, -HW);
@@ -482,11 +482,11 @@ function drawScreen(a1, a2) {
   [[LYRICS[0], a1, h / 2 - 60], [LYRICS[1], a2, h / 2 + 60]].forEach(([txt, a, y]) => {
     if (a <= 0) return;
     g.globalAlpha = a; g.fillStyle = '#fff';
-    g.shadowColor = 'rgba(255,255,255,0.6)'; g.shadowBlur = 26; g.fillText(txt, w / 2, y);   // 밝은 글씨 둘레의 번짐
+    g.shadowColor = 'rgba(255,255,255,0.35)'; g.shadowBlur = 14; g.fillText(txt, w / 2, y);   // 밝은 글씨 둘레의 번짐
     g.shadowBlur = 0; g.fillText(txt, w / 2, y);
   });
   g.globalAlpha = 1; scrT.needsUpdate = true;
-  scrLight.intensity = 3.5 * (a1 + a2);
+  scrLight.intensity = 1.2 * (a1 + a2);
 }
 // PPT 처럼: 첫 줄 → 둘째 줄이 차례로 페이드 인, 머문 뒤 함께 페이드 아웃, 잠깐 검은 화면 (12초 반복)
 let lyA1 = -1, lyA2 = -1;
@@ -636,32 +636,70 @@ const faceCenter = (o, away = false) => { const t = P(C.X, C.Y); o.rotation.y = 
 const place = (o, deg, r, h = CY) => { const [X, Y] = polar(deg, r); o.position.copy(P(X, Y, h)); return o; };
 const shadowAll = g => g.traverse(m => { if (m.isMesh) m.castShadow = true; });
 const blockers = [];
-{ // 페르시아 무늬 러그 4장 (240 × 160cm)을 2×2로 붙여 4.8 × 3.2m
-  const tRug = mkTex(1024, 683, (g, w, h) => {
-    const cream = '#e6dcc6', beige = '#cdb994', blue = '#4f6f96', navy = '#2c3f5c', brown = '#7a5a40';
-    g.fillStyle = '#d8cdb4'; g.fillRect(0, 0, w, h);
-    const band = (m, col, lw) => { g.strokeStyle = col; g.lineWidth = lw; g.strokeRect(m, m, w - 2 * m, h - 2 * m); };
-    g.fillStyle = cream; g.fillRect(14, 14, w - 28, h - 28);
-    g.fillStyle = beige; g.fillRect(30, 30, w - 60, h - 60);
-    g.fillStyle = cream; g.fillRect(104, 104, w - 208, h - 208);
-    band(30, brown, 2); band(104, brown, 2); band(22, navy, 1.5); band(112, blue, 1.5);
-    const flower = (x, y, r, c1, c2) => { for (let k = 0; k < 8; k++) { const an = k * Math.PI / 4; g.fillStyle = k % 2 ? c1 : c2; g.beginPath(); g.ellipse(x + Math.cos(an) * r * 0.55, y + Math.sin(an) * r * 0.55, r * 0.45, r * 0.22, an, 0, 6.3); g.fill(); } g.fillStyle = navy; g.beginPath(); g.arc(x, y, r * 0.2, 0, 6.3); g.fill(); };
-    const scroll = (x, y, r, dir) => { g.strokeStyle = blue; g.lineWidth = 2.2; g.beginPath(); for (let t = 0; t < 5.2; t += 0.2) g.lineTo(x + Math.cos(t * dir) * r * (1 - t / 6), y + Math.sin(t * dir) * r * (1 - t / 6)); g.stroke(); };
-    for (let x = 67 + 37; x < w - 80; x += 74) { for (const y of [67, h - 67]) { flower(x, y, 15, blue, brown); scroll(x + 37, y, 13, 1); } }
-    for (let y = 67 + 37; y < h - 80; y += 74) { for (const x of [67, w - 67]) { flower(x, y, 15, blue, brown); scroll(x, y + 37, 13, -1); } }
-    for (let i = 0; i < 70; i++) { const x = 140 + Math.random() * (w - 280), y = 140 + Math.random() * (h - 280); if (Math.hypot((x - w / 2) / 1.3, y - h / 2) < 150) continue; flower(x, y, 6 + Math.random() * 8, Math.random() < 0.5 ? blue : '#8fa3b8', Math.random() < 0.5 ? brown : beige); if (i % 3 === 0) scroll(x + 16, y + 10, 10, i % 2 ? 1 : -1); }
-    for (let ring = 0; ring < 5; ring++) { const rr = 135 - ring * 26, n = 16 - ring * 2; for (let k = 0; k < n; k++) { const an = k / n * 6.283 + ring * 0.2; flower(w / 2 + Math.cos(an) * rr * 1.25, h / 2 + Math.sin(an) * rr, 16 - ring * 1.5, ring % 2 ? blue : navy, ring % 2 ? beige : brown); } }
-    g.strokeStyle = brown; g.lineWidth = 2; g.beginPath(); g.ellipse(w / 2, h / 2, 190, 152, 0, 0, 6.3); g.stroke();
-    g.globalAlpha = 0.10; for (let y = 0; y < h; y += 3) { g.fillStyle = y % 6 ? '#000' : '#fff'; g.fillRect(0, y, w, 1); } g.globalAlpha = 1;
-    speckle(g, w, h, 30000, 60, 230, 0.10);
+{ // 페르시아 무늬 러그 4장 (230 × 170cm)을 2×2로 붙여 4.6 × 3.4m
+  // 사용자 사진의 러그: 가운데 바탕(네이비 또는 와인빛 짙은 갈색)에 둥근 초록 테 메달리온, 사방으로 퍼지는 잔꽃 무늬,
+  // 와인색 넓은 띠 테두리(카르투슈 무늬) + 베이지 덩굴 띠, 맨 바깥은 짙은 감침 테두리
+  const rugTex = (field, bind) => mkTex(1380, 1020, (g, w, h) => {
+    const wine = '#4f1519', wineD = '#330c0f', beige = '#c2a174', cream = '#e3d2b0', tan = '#a9805c', salmon = '#b98a6c', green = '#46705d', ink = '#1a1412';
+    const fill = (c, x, y, ww, hh) => { g.fillStyle = c; g.fillRect(x, y, ww, hh); };
+    const blob = (x, y, rx, ry, an, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, an, 0, 6.3); g.fill(); };
+    const flower = (x, y, r, n, petal, mid) => { for (let k = 0; k < n; k++) { const an = k / n * 6.283; blob(x + Math.cos(an) * r * 0.55, y + Math.sin(an) * r * 0.55, r * 0.45, r * 0.24, an, petal); } blob(x, y, r * 0.26, r * 0.26, 0, mid); };
+    const spray = (x, y, r, an, c1, c2) => {   // 부채꼴 잎 다발 (사진의 페이즐리·잎 무늬)
+      for (let k = -3; k <= 3; k++) { const a = an + k * 0.32; blob(x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7, r * 0.34, r * 0.12, a, k % 2 ? c1 : c2); }
+      blob(x, y, r * 0.3, r * 0.3, 0, c1); blob(x, y, r * 0.14, r * 0.14, 0, wine);
+    };
+    const B = 18, O = 40, Wb = 92, I = 18;   // 감침 테, 바깥 덩굴 띠, 와인 띠, 안쪽 덩굴 띠 폭(px)
+    fill(bind, 0, 0, w, h);
+    fill(beige, B, B, w - 2 * B, h - 2 * B);
+    fill(wine, B + O, B + O, w - 2 * (B + O), h - 2 * (B + O));
+    const fi = B + O + Wb; fill(beige, fi, fi, w - 2 * fi, h - 2 * fi);
+    const fx = fi + I; fill(field, fx, fx, w - 2 * fx, h - 2 * fx);
+    // 덩굴 띠: 베이지 바탕에 크림·짙은 S자 물결
+    const vine = (m, bw) => { g.lineWidth = 3; for (const [ax, ay, bx2, by2] of [[m, m, w - m, m], [m, h - m, w - m, h - m], [m, m, m, h - m], [w - m, m, w - m, h - m]]) { const len = Math.hypot(bx2 - ax, by2 - ay), ux = (bx2 - ax) / len, uy = (by2 - ay) / len; for (let t = 0; t < len; t += bw * 1.4) { const cx = ax + ux * t + uy * 0, cy = ay + uy * t; g.strokeStyle = (t / (bw * 1.4)) % 2 < 1 ? ink : cream; g.beginPath(); g.arc(cx, cy, bw * 0.32, 0, 3.6); g.stroke(); blob(cx + ux * bw * 0.6, cy + uy * bw * 0.6, bw * 0.16, bw * 0.08, Math.atan2(uy, ux) + 0.8, cream); } } };
+    vine(B + O / 2, O); vine(fi + I / 2, I * 1.6);
+    // 와인 띠: 카르투슈(둥근 꽃 판)와 사이 꽃
+    const bm = B + O + Wb / 2;
+    const cart = (x, y) => { blob(x, y, 40, 30, 0, wineD); blob(x, y, 34, 24, 0, tan); blob(x, y, 26, 17, 0, wine); flower(x, y, 16, 8, beige, ink); for (const dx of [-1, 1]) spray(x + dx * 58, y, 18, dx > 0 ? 0 : 3.14, beige, green); };
+    for (let x = 160; x < w - 120; x += 175) { cart(x, bm); cart(x, h - bm); }
+    for (let y = 190; y < h - 150; y += 175) { cart(bm, y); cart(w - bm, y); }
+    for (const [x, y] of [[bm, bm], [w - bm, bm], [bm, h - bm], [w - bm, h - bm]]) flower(x, y, 26, 10, beige, wine);
+    // 바탕: 메달리온을 중심으로 동심원 줄을 따라 잎 다발과 잔꽃
+    g.save(); g.beginPath(); g.rect(fx, fx, w - 2 * fx, h - 2 * fx); g.clip();
+    const cx = w / 2, cy = h / 2;
+    // 사진처럼 바탕이 잎 다발로 촘촘히 덮이게: 무늬 하나 약 8~12cm(1px ≈ 1.7mm)
+    for (let ring = 0; ring < 12; ring++) {
+      const r = 215 + ring * 52, n = Math.round(6.283 * r * 1.1 / 58);
+      for (let k = 0; k < n; k++) {
+        const an = (k + (ring % 2) * 0.5) / n * 6.283, x = cx + Math.cos(an) * r * 1.18, y = cy + Math.sin(an) * r;
+        if (x < fx - 30 || x > w - fx + 30 || y < fx - 30 || y > h - fx + 30) continue;
+        if (k % 2) spray(x, y, 30, an + (ring % 2 ? 3.14 : 0), beige, tan); else flower(x, y, 17, 7, k % 4 ? cream : tan, k % 3 ? wine : green);
+      }
+    }
+    for (let i = 0; i < 1800; i++) { const x = fx + Math.random() * (w - 2 * fx), y = fx + Math.random() * (h - 2 * fx); if (Math.hypot((x - cx) / 1.18, y - cy) < 175) continue; blob(x, y, 4, 2.4, Math.random() * 3, Math.random() < 0.6 ? beige : Math.random() < 0.5 ? cream : wine); }
+    g.restore();
+    // 가운데 메달리온: 16갈래 초록 테 → 연어빛 몸 → 베이지 꽃잎 고리 → 바탕색 속 → 와인 별
+    const star16 = (R, r, c) => { g.fillStyle = c; g.beginPath(); for (let k = 0; k < 32; k++) { const rr = k % 2 ? r : R, an = k / 32 * 6.283; g.lineTo(cx + Math.cos(an) * rr * 1.12, cy + Math.sin(an) * rr); } g.closePath(); g.fill(); };
+    star16(200, 176, wineD); star16(193, 169, green); star16(178, 155, salmon);
+    for (let k = 0; k < 16; k++) { const an = k / 16 * 6.283; spray(cx + Math.cos(an) * 125 * 1.12, cy + Math.sin(an) * 125, 26, an, cream, green); }
+    blob(cx, cy, 80, 72, 0, cream); blob(cx, cy, 72, 64, 0, field);
+    for (let k = 0; k < 8; k++) { const an = k / 8 * 6.283; blob(cx + Math.cos(an) * 40, cy + Math.sin(an) * 36, 12, 6, an, tan); }
+    g.fillStyle = wine; g.beginPath(); for (let k = 0; k < 16; k++) { const rr = k % 2 ? 9 : 22, an = k / 16 * 6.283; g.lineTo(cx + Math.cos(an) * rr, cy + Math.sin(an) * rr); } g.closePath(); g.fill();
+    // 짧은 털 결: 가는 가로줄 + 점 노이즈 (사진처럼 무광의 부드러운 면)
+    g.globalAlpha = 0.07; for (let y = 0; y < h; y += 3) { g.fillStyle = y % 6 ? '#000' : '#fff'; g.fillRect(0, y, w, 1); } g.globalAlpha = 1;
+    speckle(g, w, h, 40000, 30, 200, 0.08);
   });
-  tRug.wrapS = tRug.wrapT = THREE.ClampToEdgeWrapping;
-  const side = std({ color: 0xcfc3a8, roughness: 1 }), top = std({ map: tRug, roughness: 0.95 });
+  const looks = { navy: ['#1b2a45', '#1f3a66'], wine: ['#3b2420', '#4a3b36'] };   // [바탕, 감침 테]
+  const mats = Object.fromEntries(Object.entries(looks).map(([k, [field, bind]]) => {
+    const t = rugTex(field, bind); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    const side = std({ color: bind, roughness: 1 });
+    return [k, [side, side, std({ map: t, roughness: 0.9 }), side, side, side]];
+  }));
   const { w, d } = SHOW.rug;
   const under = new THREE.Mesh(new THREE.BoxGeometry(SHOW.underlay[0], 0.004, SHOW.underlay[1]), std({ color: 0x2a211c, roughness: 1 })); under.position.copy(P(C.X, C.Y, 0.008)); under.receiveShadow = true; dyn.add(under);
-  [[-1, -1, 0.004], [1, -1, -0.006], [-1, 0, 0.003], [1, 0, -0.004], [-1, 1, -0.005], [1, 1, 0.007]].forEach(([sx, sy, rot]) => {
-    const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), [side, side, top, side, side, side]);
-    rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
+  // 4장을 2×2로, 네이비·와인을 엇갈려
+  [[-1, -1, 0.004, 'navy'], [1, -1, -0.006, 'wine'], [-1, 1, -0.005, 'wine'], [1, 1, 0.007, 'navy']].forEach(([sx, sy, rot, look]) => {
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), mats[look]);
+    rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d / 2 + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
   });
 }
 function makeGuitar(bass, color) {
@@ -1018,7 +1056,7 @@ function blocked(x, z) {
 function groundAt(x, z) {
   const Y = -z;
   if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + S.step) return S.h / 2; }
-  return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d * 1.5 ? CY : 0;
+  return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d ? CY : 0;
 }
 const tmp = new THREE.Vector3();
 let walkPh = 0, baseY = 0, jumpH = 0, jumpV = 0;
