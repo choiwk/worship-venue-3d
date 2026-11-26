@@ -668,6 +668,26 @@ function makeMicStand() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.027, 10, 8), M.chrome); head.position.set(0, 1.52, 0.125); g.add(head);
   shadowAll(g); return g;
 }
+// 바닥 조명(찬양팀 사이사이). bar: LED 막대 140cm·40W, 아니면 갓 스탠드 150cm(갓 24×30cm, 받침 23cm)·전구 8W
+// 밝기는 장면 기준(스탠드 스포트 210)에 맞춘 값. 40W : 8W 비율만 지킨다
+function makeFloorLamp(bar) {
+  const g = new THREE.Group(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const glow = c => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(2.2), side: THREE.DoubleSide });
+  const lamp = new THREE.PointLight(bar ? 0xffc58a : 0xffe0b0, bar ? 12 : 2.4, 7, 2);
+  if (bar) {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 24), M.blackMetal); base.position.y = 0.04; g.add(base);
+    cyl(0.013, M.blackMetal, V(0, 0.08, 0), V(0, 0.42, 0), g, 10);
+    cyl(0.012, glow(0xffc58a), V(0, 0.42, 0), V(0, 1.37, 0), g, 10);
+    cyl(0.014, M.blackMetal, V(0, 1.37, 0), V(0, 1.4, 0), g, 10);
+    lamp.position.y = 0.9;
+  } else {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.02, 24), M.white); base.position.y = 0.01; g.add(base);
+    cyl(0.009, M.white, V(0, 0.02, 0), V(0, 1.2, 0), g, 8);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.3, 24, 1, true), glow(0xfff0d8)); shade.position.y = 1.35; g.add(shade);
+    lamp.position.y = 1.32;
+  }
+  g.add(lamp); shadowAll(g); return g;
+}
 const tKeys = mkTex(1024, 64, (c, w, h) => {
   c.fillStyle = '#eceae3'; c.fillRect(0, 0, w, h); const ww = w / 52;
   c.fillStyle = '#8d8d8d'; for (let i = 0; i < 52; i++) c.fillRect(i * ww, 0, 1, h);
@@ -713,12 +733,12 @@ const performers = [];
   const R = SHOW.ringR, SB = [C.X, C.Y];        // 원 가운데: 마이크·믹서 연결 박스
   const looks = [
     { top: 0xcfc8b8, bottom: 0x202026, arms: [[2.5, 0.25, 0.35], [0.06, 0.07, 0.25]], h: 1.64, longHair: true },
-    { top: 0x283047, bottom: 0x7d6f5a, arms: [[0.3, 0.02, 1.9], [0.3, 0.02, 1.9]], h: 1.76 },
+    { top: 0x283047, bottom: 0x7d6f5a, arms: [[0.3, 0.02, 1.9], [0.3, 0.02, 1.9]], h: 1.73 },
     { top: 0x5b2a2d, bottom: 0x1b1b1e, arms: [[0.06, 0.07, 0.25], [2.4, 0.3, 0.4]], h: 1.62, longHair: true },
-    { top: 0x4a5241, bottom: 0x232327, arms: [[0.1, 0.1, 0.6], [0.1, 0.1, 0.6]], h: 1.78 },
+    { top: 0x4a5241, bottom: 0x232327, arms: [[0.1, 0.1, 0.6], [0.1, 0.1, 0.6]], h: 1.75 },
     { top: 0xb7a78c, bottom: 0x2a2f3a, arms: [[2.3, 0.4, 0.3], [2.3, 0.4, 0.3]], h: 1.66, longHair: true },
     { top: 0x1c1c1f, bottom: 0x4f4840, arms: [[0.3, 0.02, 1.8], [0.06, 0.07, 0.25]], h: 1.74 },
-    { top: 0x8e8474, bottom: 0x1d2028, arms: [[0.06, 0.07, 0.25], [0.3, 0.02, 1.8]], h: 1.60, longHair: true },
+    { top: 0x8e8474, bottom: 0x1d2028, arms: [[0.06, 0.07, 0.25], [0.3, 0.02, 1.8]], h: 1.56, longHair: true },
   ];
   SHOW.vocals.forEach((deg, i) => {
     const p = makePerson(looks[i]); place(p.g, deg, R); faceCenter(p.g); dyn.add(p.g); performers.push({ ...p, ph: i * 1.3 });
@@ -727,7 +747,7 @@ const performers = [];
     blockers.push([...polar(deg, R), 0.38]);
   });
   for (const [deg, bass, col, ampDeg] of [[SHOW.bass, true, 0x2a2420, SHOW.bass + 5 * SHOW.right], [SHOW.guitar, false, 0x7c2420, SHOW.guitar + 5 * SHOW.right]]) {
-    const p = makePerson({ top: bass ? 0x34343a : 0xa8a193, bottom: 0x1a1a1e, arms: [[0.25, 0.08, 1.45], [0.6, 0.42, 0.55]], h: bass ? 1.77 : 1.73 });
+    const p = makePerson({ top: bass ? 0x34343a : 0xa8a193, bottom: 0x1a1a1e, arms: [[0.25, 0.08, 1.45], [0.6, 0.42, 0.55]], h: bass ? 1.74 : 1.71 });
     const gt = makeGuitar(bass, col); gt.position.set(0.03, p.hip + 0.12, 0.17); gt.rotation.z = 0.32; p.g.add(gt);
     place(p.g, deg, R); faceCenter(p.g); dyn.add(p.g); performers.push({ ...p, ph: deg });
     const amp = bass ? makeAmp(0.6, 0.78, 0.4) : makeAmp(0.6, 0.5, 0.28); place(amp, ampDeg, 4.3); faceCenter(amp); dyn.add(amp);
@@ -748,6 +768,10 @@ const performers = [];
     cable([polar(deg, R - 0.55), polar(deg - 14, 2.0), SB]);
     blockers.push([...polar(deg, R - 0.3), 0.85]);
   });
+  // 바닥 조명 4개: 사람·악기 사이 빈자리에 LED 막대와 갓 스탠드를 번갈아
+  for (const [deg, bar] of [[12, true], [88, false], [180 - SHOW.right * 20, true], [272, false]]) {
+    const lp = makeFloorLamp(bar); place(lp, deg, R); dyn.add(lp); blockers.push([...polar(deg, R), 0.2]);
+  }
   // 가운데 연결 박스 → 드럼 앞 → 드럼 옆(일렉 쪽) → 일렉 뒤 → 무대 오른쪽 구석 믹서
   blockers.push([C.X, C.Y, 0.4]);
   const sb = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.14, 0.3), M.blackMetal); sb.position.copy(P(SB[0], SB[1], CY + 0.07)); sb.castShadow = true; dyn.add(sb);
@@ -776,7 +800,7 @@ const soundBlock = [];
   const mk = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; mx.add(b); return b; };
   mk(1.5, 0.04, 0.7, M.black, 0, 0.74, 0); for (const sx of [-0.7, 0.7]) for (const sz of [-0.3, 0.3]) mk(0.04, 0.72, 0.04, M.blackMetal, sx, 0.36, sz);
   mk(0.9, 0.1, 0.5, M.blackMetal, -0.15, 0.82, 0).rotation.x = -0.18; mk(0.34, 0.22, 0.02, M.black, 0.5, 0.9, -0.05).rotation.x = -0.3;
-  const eng = makePerson({ top: 0x2a2c33, bottom: 0x1c1c20, arms: [[0.4, 0.05, 1.0], [0.4, 0.05, 1.0]], h: 1.76 }); eng.g.position.set(0, 0, -0.62); mx.add(eng.g);
+  const eng = makePerson({ top: 0x2a2c33, bottom: 0x1c1c20, arms: [[0.4, 0.05, 1.0], [0.4, 0.05, 1.0]], h: 1.72 }); eng.g.position.set(0, 0, -0.62); mx.add(eng.g);
   soundBlock.push([MIXER[0], MIXER[1], 1.5]); blockers.push([MIXER[0], MIXER[1], 0.9]);
 }
 
@@ -801,7 +825,8 @@ const crowdSets = [];
       if (Math.hypot(X - VIEW_AUD[0], Y - VIEW_AUD[1]) < 0.6 || Math.hypot(X - (L - 1.2), Y - 10.5) < 3.2) continue;
       if (reserved.some(([sx, sy]) => Math.hypot(X - sx, Y - sy) < 1.25) || soundBlock.some(([sx, sy, sr]) => Math.hypot(X - sx, Y - sy) < sr)) continue;
       if (rnd() < 0.1) continue;
-      spots.push({ h: X < S.depth ? S.h : 0, x: X + (rnd() - 0.5) * 0.16, z: -(Y + (rnd() - 0.5) * 0.16), s: 0.89 + rnd() * 0.13, w: 0.9 + rnd() * 0.2, rot: 0, ph: rnd() * 6.3, v: (rnd() < 0.15 ? 2 : 0) + (rnd() < 0.45 ? 1 : 0) });
+      spots.push({ h: X < S.depth ? S.h : 0, x: X + (rnd() - 0.5) * 0.16, z: -(Y + (rnd() - 0.5) * 0.16), s: 0.876 + rnd() * 0.113,   // 키 155~175cm (모델 기본 177cm)
+       w: 0.9 + rnd() * 0.2, rot: 0, ph: rnd() * 6.3, v: (rnd() < 0.15 ? 2 : 0) + (rnd() < 0.45 ? 1 : 0) });
     }
   }
   const tops = [0x1a1a1d, 0x25293a, 0xc4bfb3, 0x7a6f5c, 0x434a3e, 0x5f5f63, 0xa39478, 0x352a26, 0x1f2b40, 0xd2cfc8, 0x4f322d, 0x848c95, 0x111113, 0x2c2c30];
