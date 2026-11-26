@@ -99,14 +99,14 @@
   <table>
     <tr><td>평면 26.3m × 16.4m (앞 무대 3.6 + 강당 20.5 + 방송실 2.1m), 맞배지붕</td><td><span class="g gB">B</span></td></tr>
     <tr><td>바닥·벽·기둥·천장 마감재 종류 (현장 사진 기준)</td><td><span class="g gB">B</span></td></tr>
-    <tr><td>LED 폭 4.2m · 무대 첫 계단 0.6m</td><td><span class="g gB">B</span></td></tr>
-    <tr><td>측벽 5m · 용마루 8m · 무대 높이 0.4m</td><td><span class="g gC">C</span></td></tr>
+    <tr><td>LED 폭 4.2m · 무대 첫 계단 깊이 0.6m · 높이 30cm / 무대 60cm</td><td><span class="g gB">B</span></td></tr>
+    <tr><td>측벽 5m · 용마루 8m</td><td><span class="g gC">C</span></td></tr>
     <tr><td>동쪽(뒤) 벽: 출입문, 남쪽 방송실(깊이 2.1m)</td><td><span class="g gB">B</span></td></tr>
   </table>
   <b>공연 구성</b>
   <table>
     <tr><td>편성 (12명)</td><td>보컬 7 · 일렉 1 · 베이스 1 · 드럼 1 · 건반 2</td></tr>
-    <tr><td>카펫</td><td>페르시아 러그 4장(270×200cm, 다크브라운)을 2×2로, 5.4 × 4.0m</td></tr>
+    <tr><td>카펫</td><td>페르시아 러그 6장(270×200cm, 다크브라운)을 2×3으로, 5.4 × 6.0m</td></tr>
     <tr><td>찬양팀 배치</td><td>긴 방향 9.0m × 폭 5.2m 타원으로 둘러서서 중앙을 바라봄</td></tr>
     <tr><td>스탠드 조명</td><td>좌·우 측벽 앞 2대, 각 4구 LED × 1단, 중앙 조준</td></tr>
     <tr><td>회중</td><td>찬양팀 타원에서 약 1.5m 띄워 둘러섬, 십자 통로 4개</td></tr>
@@ -148,7 +148,7 @@ const VENUE = {
   // 2026-11 실측(발 길이 26cm × 걸음 수): 가로 63 → 16.38m, 세로 = 앞 무대 14(3.64m) + 강당 79(20.54m) + 방송실 8(2.08m) = 26.26m
   length: 26.26, width: 16.38, grid: [0, 6.565, 13.13, 19.695, 26.26],   // 기둥 칸은 도면처럼 4칸, 실측 길이에 맞춰 고르게 나눔
   eave: 5.0, ridge: 8.0,
-  stage: { depth: 3.04, step: 0.6, zFrom: 0.3, zTo: 14.26, h: 0.4 },   // 위 무대 3.04 + 첫 계단 2.3걸음(0.6m) = 14걸음. 계단 한 단 20cm(첫 계단 h/2), 무대 위 40cm
+  stage: { depth: 3.04, step: 0.6, zFrom: 0.3, zTo: 14.26, h: 0.6, stepH: 0.3 },   // 위 무대 3.04 + 첫 계단 2.3걸음(0.6m) = 14걸음. 첫 계단 30cm, 무대 위 60cm
   screen: { w: 4.16, h: 2.34, bottom: 2.9 },                            // 16걸음, 16:9
   wainscot: 1.2, winTop: 4.5,
   xbox: { x0: 24.18, x1: 26.26, y0: 0, y1: 8.3, h: 3.0 },   // 방송실(뒤쪽 벽 남쪽, 깊이 8걸음)
@@ -158,7 +158,7 @@ const VENUE = {
 const SHOW = {
   center: { X: 9.69, Y: 8.19 },     // 무대 앞 끝에서 6.05m(v0.12와 같은 거리), 홀 가로 가운데. 케이블 길이 때문에 홀 정중앙이 아님
   right: 1,                         // 무대를 바라볼 때 오른쪽 = 북쪽(+1). 반대면 -1 (일렉·베이스·믹서 쪽)
-  rug: { w: 2.7, d: 2.0 },          // 페르시아 러그 한 장(m) 270 × 200cm, 다크브라운. 2 × 2 = 4장, 5.4 × 4.0m
+  rug: { w: 2.7, d: 2.0 },          // 페르시아 러그 한 장(m) 270 × 200cm, 다크브라운. 가로 2 × 세로 3 = 6장, 5.4 × 6.0m
   ringR: 3.2,                       // 배치 계산용 기준 반지름(실제 위치는 아래 타원으로 변환)
   ellipse: { a: 3.4, b: 3.4 },      // 찬양팀이 서는 원: 반지름 3.4m
   underlay: [7.4, 7.4],             // 러그 아래 어두운 바닥 천(m)
@@ -453,7 +453,7 @@ const roofGroup = new THREE.Group(); arch.add(roofGroup);
 /* ---------- fixed stage, boxes, screen ---------- */
 const S = VENUE.stage, E_ = VENUE.entry, X_ = VENUE.xbox;
 box(S.depth, S.h, S.zTo - S.zFrom, M.stageTop, S.depth / 2, S.h / 2, -(S.zFrom + S.zTo) / 2, { cast: true, recv: true });
-box(S.step, S.h / 2, S.zTo - S.zFrom, M.stageFace, S.depth + S.step / 2, S.h / 4, -(S.zFrom + S.zTo) / 2, { recv: true });
+box(S.step, S.stepH, S.zTo - S.zFrom, M.stageFace, S.depth + S.step / 2, S.stepH / 2, -(S.zFrom + S.zTo) / 2, { recv: true });
 box(E_.x1, E_.h, Wd - E_.y0, M.boxWood, E_.x1 / 2, E_.h / 2, -(E_.y0 + Wd) / 2, { cast: true, recv: true });
 box(0.06, 2.1, 1.0, M.white, E_.x1 + 0.03, 0.6 + 1.05, -(E_.y0 + 1.0));
 for (let k = 0; k < 4; k++) box(0.35, 0.15 * (k + 1), 1.2, M.stageFace, E_.x1 + 1.4 - k * 0.35, 0.075 * (k + 1), -(E_.y0 + 1.0), { recv: true });
@@ -636,7 +636,7 @@ const faceCenter = (o, away = false) => { const t = P(C.X, C.Y); o.rotation.y = 
 const place = (o, deg, r, h = CY) => { const [X, Y] = polar(deg, r); o.position.copy(P(X, Y, h)); return o; };
 const shadowAll = g => g.traverse(m => { if (m.isMesh) m.castShadow = true; });
 const blockers = [];
-{ // 페르시아 무늬 러그 4장 (270 × 200cm, 다크브라운)을 2×2로 붙여 5.4 × 4.0m
+{ // 페르시아 무늬 러그 6장 (270 × 200cm, 다크브라운)을 2×3으로 붙여 5.4 × 6.0m
   // 사용자 사진의 러그(다크브라운): 메달리온 없이 바탕 전체에 잔꽃·팔메트가 고르게 깔린 올오버 무늬,
   // 아이보리 넓은 테두리(빽빽한 꽃 덩굴) 양옆으로 짙은 가는 띠, 맨 바깥은 자줏빛 감침. 1px ≈ 2mm
   const tRug = mkTex(1350, 1000, (g, w, h) => {
@@ -686,10 +686,10 @@ const blockers = [];
   const side = std({ color: 0x3a1a26, roughness: 1 }), rugMat = [side, side, std({ map: tRug, roughness: 0.92 }), side, side, side];
   const { w, d } = SHOW.rug;
   const under = new THREE.Mesh(new THREE.BoxGeometry(SHOW.underlay[0], 0.004, SHOW.underlay[1]), std({ color: 0x2a211c, roughness: 1 })); under.position.copy(P(C.X, C.Y, 0.008)); under.receiveShadow = true; dyn.add(under);
-  // 4장을 2×2로 (돌려 놓은 두 장은 무늬 방향이 반대라 이음매가 덜 똑같아 보인다)
-  [[-1, -1, 0.004], [1, -1, Math.PI - 0.006], [-1, 1, Math.PI - 0.005], [1, 1, 0.007]].forEach(([sx, sy, rot]) => {
+  // 6장을 가로 2 × 세로 3으로 (반은 180° 돌려 놓아 이음매 무늬가 덜 똑같아 보이게)
+  [[-1, -1, 0.004], [1, -1, Math.PI - 0.006], [-1, 0, Math.PI + 0.003], [1, 0, -0.004], [-1, 1, -0.005], [1, 1, Math.PI + 0.007]].forEach(([sx, sy, rot]) => {
     const rug = new THREE.Mesh(new THREE.BoxGeometry(w, CY, d), rugMat);
-    rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d / 2 + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
+    rug.position.copy(P(C.X + sx * (w / 2 + 0.004), C.Y + sy * (d + 0.004), CY / 2 + 0.008)); rug.rotation.y = rot; rug.receiveShadow = true; dyn.add(rug);
   });
 }
 function makeGuitar(bass, color) {
@@ -1045,8 +1045,8 @@ function blocked(x, z) {
 }
 function groundAt(x, z) {
   const Y = -z;
-  if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + S.step) return S.h / 2; }
-  return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d ? CY : 0;
+  if (Y > S.zFrom - 0.1 && Y < S.zTo + 0.1) { if (x < S.depth) return S.h; if (x < S.depth + S.step) return S.stepH; }
+  return Math.abs(x - C.X) < SHOW.rug.w && Math.abs(Y - C.Y) < SHOW.rug.d * 1.5 ? CY : 0;
 }
 const tmp = new THREE.Vector3();
 let walkPh = 0, baseY = 0, jumpH = 0, jumpV = 0;
@@ -1061,11 +1061,11 @@ function step(dt) {
   const mv = dir.multiplyScalar(f).add(right.multiplyScalar(r));
   let moving = 0;
   if (mv.lengthSq() > 1e-4 && mode !== 'orbit') {
-    mv.normalize().multiplyScalar(1.9 * mag * dt);
+    mv.normalize().multiplyScalar(2.6 * mag * dt);
     const nx = Math.max(0.45, Math.min(L - 0.45, avatar.position.x + mv.x)), nz = Math.max(-Wd + 0.45, Math.min(-0.45, avatar.position.z + mv.z));
     if (!blocked(nx, avatar.position.z)) avatar.position.x = nx;
     if (!blocked(avatar.position.x, nz)) avatar.position.z = nz;
-    avatar.rotation.y = Math.atan2(mv.x, mv.z); moving = mag; walkPh += dt * 7.5 * mag;
+    avatar.rotation.y = Math.atan2(mv.x, mv.z); moving = mag; walkPh += dt * 9.5 * mag;
   }
   const sw = Math.sin(walkPh) * 0.5 * moving;
   [1, -1].forEach((s, i) => {
