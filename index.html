@@ -508,7 +508,8 @@ key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0004; key.shadow.normal
 Object.assign(key.shadow.camera, { left: -16, right: 16, top: 11, bottom: -11, near: 5, far: 30 });
 scene.add(key, key.target);
 const warm = [L / 6, L / 2, L * 5 / 6].map(X => { const p = new THREE.PointLight(0xffdcae, 70, 0, 2); p.position.copy(P(X, HW, 6.0)); scene.add(p); return p; });
-const G1 = VENUE.grid[1], G3 = VENUE.grid[3], wallPts = [[G1, 1.3], [G3, 1.3], [G1, Wd - 1.3], [G3, Wd - 1.3]].map(([X, Y]) => { const p = new THREE.PointLight(0xffc890, 24, 14, 2); p.position.copy(P(X, Y, 3.3)); scene.add(p); return p; });
+// 벽 조명 채움빛: 벽에서 3.2m 떨어뜨려 특정 기둥 조명만 밝게 번지지 않고 벽 전체가 고르게 은은하도록
+const G1 = VENUE.grid[1], G3 = VENUE.grid[3], wallPts = [[G1, 3.2], [G3, 3.2], [G1, Wd - 3.2], [G3, Wd - 3.2]].map(([X, Y]) => { const p = new THREE.PointLight(0xffc890, 12, 14, 2); p.position.copy(P(X, Y, 3.6)); scene.add(p); return p; });
 
 // 스탠드 조명: 삼각대 + 폴 + T바 1단 × LED 파 4구
 const standGroup = new THREE.Group(); scene.add(standGroup);
@@ -559,11 +560,11 @@ function applyLights() {
   hemi.intensity = 0.015 + 0.42 * high + 0.05 * col + 0.02 * stand;
   key.intensity = 0.75 * high + 0.06 * col;
   warm.forEach(p => p.intensity = 70 * high);
-  wallPts.forEach(p => { p.intensity = 26 * col; p.color.copy(lc); });
+  wallPts.forEach(p => { p.intensity = 12 * col; p.color.copy(lc); });
   M.highbay.color.setRGB(1, 0.93, 0.8).multiplyScalar(0.03 + 1.3 * high);
-  M.colLens.color.copy(lc).multiplyScalar(0.05 + 2.2 * col);
+  M.colLens.color.copy(lc).multiplyScalar(0.05 + 1.3 * col);
   washMat.color.copy(lc); poolMat.color.copy(lc); haloMat.color.copy(lc);
-  washMat.opacity = 0.7 * col; poolMat.opacity = 0.14 * col; haloMat.opacity = 0.7 * col;
+  washMat.opacity = 0.5 * col; poolMat.opacity = 0.1 * col; haloMat.opacity = 0.4 * col;
   M.parLens.color.copy(lc).multiplyScalar(0.03 + 3.2 * stand);
   standSpots.forEach(sp => { sp.intensity = 210 * stand; sp.color.copy(lc); });
   standCones.forEach(c => { c.material.color.copy(lc); c.material.opacity = 0.013 * stand * (1 - 0.6 * high); });
